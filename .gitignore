@@ -1,0 +1,13 @@
+# binaries
+gophish
+docker/fetcher/fetcher
+
+# env / secrets
+.env
+.env.*
+
+# test coverage
+coverage.out
+
+# local Claude settings
+.claude/settings.local.json

@@ -97,6 +97,7 @@ When `design.md` covers one of these, explicitly list alternatives considered an
 - **Thin vertical slices.** End-to-end working pipeline before any single component is "done."
 - **When the agent does something wrong, understand the failure mode first.** Document it in `agent-notes.md` before changing anything. Half the value of this project is seeing failure modes clearly.
 - **Commit after each completed task.** Git history tells the story.
+- **Delete compiled binaries after build/test.** Never leave `gophish`, `docker/fetcher/fetcher`, or any other output binary as an untracked file. Remove them immediately after the build or test step that produced them.
 
 ## Out of scope for v1
 

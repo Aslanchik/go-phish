@@ -156,7 +156,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-11: Report formatter
+## [x] T-11: Report formatter
 
 **Satisfies:** CP-5
 
@@ -168,7 +168,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-12: CLI and pipeline wiring
+## [x] T-12: CLI and pipeline wiring
 
 **Satisfies:** CP-1, CP-2, CP-3, CP-4, CP-5
 

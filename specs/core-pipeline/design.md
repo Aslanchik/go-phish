@@ -92,8 +92,8 @@ The host unmarshals this into a typed Go struct in `internal/fetcher/`. If stdou
 Before starting the container, the Go orchestrator:
 1. Resolves the target domain to its IP addresses.
 2. Starts an in-process HTTP CONNECT proxy (listening on `0.0.0.0:0`) that only forwards connections whose resolved destination IP is in the allowlist.
-3. Inspects the per-investigation Docker bridge network to get its gateway IP (the host-side address reachable from inside the container).
-4. Passes `HTTP_PROXY` and `HTTPS_PROXY` pointing to `http://<gateway-ip>:<proxy-port>` to the container.
+3. Passes `HTTP_PROXY` and `HTTPS_PROXY` pointing to `http://host.docker.internal:<proxy-port>` to the container.
+4. On Linux, adds `--add-host=host.docker.internal:host-gateway` to the `docker run` call so the hostname resolves; Docker Desktop on macOS/Windows injects it automatically.
 5. Configures Chromium with `--proxy-server`, `--disable-quic`, and `--disable-dns-over-https` to prevent UDP-based and DoH-based proxy bypass.
 
 Alternatives considered:
@@ -101,8 +101,9 @@ Alternatives considered:
 - **Host-side iptables FORWARD rules**: works on Linux only — Docker Desktop on macOS runs containers in a Linux VM so host iptables rules don't reach them. Implemented initially, replaced by proxy for cross-platform parity.
 - **Docker network with `--internal`**: blocks all external egress, same problem as `--network none`.
 - **Privileged setup container writing iptables into the Docker VM**: rules affect the shared VM network namespace; cleanup failures could break unrelated containers. Too dangerous.
+- **Gateway IP from `docker network inspect`**: attempted first; fails on macOS Docker Desktop because the bridge gateway is inside the Linux VM and not reachable from the macOS host where the proxy listens.
 
-The proxy approach is chosen over iptables because it works identically on macOS and Linux, and the connection log it produces is a useful audit trail. The gateway IP is read from `docker network inspect` so no `--add-host` tricks or platform-specific DNS names are needed.
+The proxy approach is chosen over iptables because it works identically on macOS and Linux, and the connection log it produces is a useful audit trail. `host.docker.internal` is used instead of the bridge gateway IP to correctly traverse the macOS Docker Desktop VM boundary.
 
 Known limitation: if the target page loads resources from additional domains (CDN, tracking pixels, etc.), those requests will be blocked by the proxy. This is acceptable for v1 — the primary page renders, and we're investigating the phishing kit itself, not its third-party dependencies.
 

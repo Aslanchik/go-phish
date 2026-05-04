@@ -8,18 +8,22 @@ import (
 	"net"
 	"net/url"
 	"os/exec"
-	"strings"
+	"runtime"
 	"time"
 )
 
 const (
 	fetcherImage    = "go-phish-fetcher:latest"
 	fetchTimeoutSec = "30"
+	// proxyHost is the hostname containers use to reach the host machine.
+	// On macOS/Windows, Docker Desktop injects this automatically.
+	// On Linux, we pass --add-host=host.docker.internal:host-gateway to docker run.
+	proxyHost = "host.docker.internal"
 )
 
 // Run fetches the target URL inside a sandboxed container and returns structured results.
 // Egress is restricted via an in-process HTTP CONNECT proxy that whitelists only the
-// resolved target IPs; the proxy URL is passed to the container via HTTP_PROXY/HTTPS_PROXY.
+// resolved target IPs; the proxy is reachable from the container via host.docker.internal.
 func Run(ctx context.Context, targetURL string) (FetchResult, error) {
 	host, err := extractHost(targetURL)
 	if err != nil {
@@ -43,12 +47,7 @@ func Run(ctx context.Context, targetURL string) (FetchResult, error) {
 	}
 	defer proxy.stop()
 
-	gateway, err := getNetworkGateway(ctx, networkName)
-	if err != nil {
-		return FetchResult{}, fmt.Errorf("get network gateway: %w", err)
-	}
-
-	proxyURL := fmt.Sprintf("http://%s:%d", gateway, proxy.port())
+	proxyURL := fmt.Sprintf("http://%s:%d", proxyHost, proxy.port())
 	return runContainer(ctx, targetURL, networkName, proxyURL)
 }
 
@@ -69,43 +68,36 @@ func createNetwork(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("docker network create: %w", err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	_ = out
+	return "", nil
 }
 
 func removeNetwork(name string) {
 	exec.Command("docker", "network", "rm", name).Run() //nolint:errcheck
 }
 
-func getNetworkGateway(ctx context.Context, networkName string) (string, error) {
-	out, err := exec.CommandContext(ctx, "docker", "network", "inspect",
-		"--format", "{{(index .IPAM.Config 0).Gateway}}",
-		networkName,
-	).Output()
-	if err != nil {
-		return "", fmt.Errorf("docker network inspect: %w", err)
-	}
-	gw := strings.TrimSpace(string(out))
-	if gw == "" {
-		return "", fmt.Errorf("no gateway found for network %s", networkName)
-	}
-	return gw, nil
-}
-
 func runContainer(ctx context.Context, targetURL, networkName, proxyURL string) (FetchResult, error) {
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "docker", "run",
-		"--rm",
+	args := []string{
+		"run", "--rm",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges",
 		"--read-only",
 		"--tmpfs", "/tmp:size=256m",
 		"--network", networkName,
-		"--env", "TARGET_URL="+targetURL,
-		"--env", "FETCH_TIMEOUT_SECONDS="+fetchTimeoutSec,
-		"--env", "HTTP_PROXY="+proxyURL,
-		"--env", "HTTPS_PROXY="+proxyURL,
-		fetcherImage,
-	)
+		"--env", "TARGET_URL=" + targetURL,
+		"--env", "FETCH_TIMEOUT_SECONDS=" + fetchTimeoutSec,
+		"--env", "HTTP_PROXY=" + proxyURL,
+		"--env", "HTTPS_PROXY=" + proxyURL,
+	}
+	// On Linux, Docker does not inject host.docker.internal automatically;
+	// --add-host maps it to the host gateway so the container can reach the proxy.
+	if runtime.GOOS == "linux" {
+		args = append(args, "--add-host=host.docker.internal:host-gateway")
+	}
+	args = append(args, fetcherImage)
+
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 

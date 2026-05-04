@@ -1,6 +1,7 @@
 # Binaries
 /gophish
 /cmd/gophish/gophish
+/docker/fetcher/fetcher
 *.exe
 *.test
 *.out

@@ -1,13 +1,20 @@
-# binaries
-gophish
-docker/fetcher/fetcher
+# Binaries
+/gophish
+/cmd/gophish/gophish
+*.exe
+*.test
+*.out
 
-# env / secrets
+# Vendor
+vendor/
+
+# Environment files
 .env
-.env.*
+.env.local
+*.env
 
-# test coverage
-coverage.out
+# Build cache
+dist/
 
-# local Claude settings
-.claude/settings.local.json
+# macOS
+.DS_Store

@@ -4,27 +4,29 @@ Tasks are ordered. Each must be complete and verifiable before the next begins. 
 
 Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
+
 ---
 
-## T-01: Initialize Go module and directory structure
+## [x] T-01: Initialize Go module and directory structure
 
 **Satisfies:** foundation for all requirements
 
 - `go mod init github.com/aslanchik/go-phish`
-- Create directory tree: `cmd/gophish/`, `internal/fetcher/`, `internal/hypothesis/`, `internal/db/`, `internal/report/`, `internal/enrichment/` (stub), `internal/synthesis/` (stub), `internal/agent/` (stub), `internal/tools/` (stub), `docker/fetcher/`, `migrations/`
+- Create directory tree: `cmd/gophish/`, `internal/fetcher/`, `internal/hypothesis/`, `internal/db/`, `internal/report/`, `internal/enrichment/` (stub), `internal/synthesis/` (stub), `internal/agent/` (stub), `internal/tools/` (stub), `docker/fetcher/`, `internal/db/migrations/`
 - Add `.gitignore` (Go standard: binaries, `vendor/`, env files)
 - Add stub `main.go` in `cmd/gophish/` that compiles and exits 0
+- Add `docker-compose.yml` at the repo root that starts a PostgreSQL container, exposes it on port 5432, and sets `DATABASE_URL` in a `.env` file consumed by Compose; include a `healthcheck` so dependent services wait for Postgres to be ready
 
-**Verified when:** `go build ./...` succeeds with no errors
+**Verified when:** `go build ./...` succeeds with no errors; `docker compose up -d` starts Postgres and `docker compose ps` shows it healthy
 
 ---
 
-## T-02: Postgres migrations — investigations table
+## [x] T-02: Postgres migrations — investigations table
 
 **Satisfies:** CP-4
 
 - Add goose as a dependency (`github.com/pressly/goose/v3`)
-- Write `migrations/0001_create_investigations.sql` per the schema in design.md
+- Write `internal/db/migrations/0001_create_investigations.sql` per the schema in design.md
 - Embed the migrations directory in `internal/db/` using `embed.FS`
 - Write a `db.RunMigrations(db *sql.DB)` function that applies pending migrations via goose
 
@@ -32,17 +34,17 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-03: Postgres migrations — eval_labels table
+## [x] T-03: Postgres migrations — eval_labels table
 
 **Satisfies:** CP-4
 
-- Write `migrations/0002_create_eval_labels.sql` per the schema in design.md (foreign key to `investigations.id`)
+- Write `internal/db/migrations/0002_create_eval_labels.sql` per the schema in design.md (foreign key to `investigations.id`)
 
 **Verified when:** running migrations creates `eval_labels` with the correct columns; `investigations` FK constraint is enforced
 
 ---
 
-## T-04: Database connection and startup check
+## [x] T-04: Database connection and startup check
 
 **Satisfies:** CP-4 (fail before fetching if DB is unreachable)
 

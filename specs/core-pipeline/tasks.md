@@ -57,7 +57,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-05: Investigation CRUD in db package
+## [x] T-05: Investigation CRUD in db package
 
 **Satisfies:** CP-4
 
@@ -73,7 +73,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-06: Fetcher container binary
+## [x] T-06: Fetcher container binary
 
 **Satisfies:** CP-2
 
@@ -90,7 +90,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-07: Fetcher Dockerfile
+## [x] T-07: Fetcher Dockerfile
 
 **Satisfies:** CP-2, S-1
 
@@ -104,7 +104,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-08: Host-side fetcher orchestrator with egress restriction
+## [x] T-08: Host-side fetcher orchestrator with egress restriction
 
 **Satisfies:** CP-2, S-2
 
@@ -121,7 +121,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-09: DOM summary extraction
+## [x] T-09: DOM summary extraction
 
 **Satisfies:** CP-3
 

@@ -87,16 +87,24 @@ The host unmarshals this into a typed Go struct in `internal/fetcher/`. If stdou
 
 ### Egress restriction
 
-**Decision:** host-side iptables rules scoped to the container, with pre-resolved IPs.
+**Decision:** host-side HTTP CONNECT proxy with IP allowlist, cross-platform.
 
-Before starting the container, the Go orchestrator resolves the target domain to its IP addresses. It then runs the container on a dedicated Docker bridge network and installs iptables OUTPUT rules on that network interface that whitelist only those IPs (plus the Docker DNS resolver). All other egress from the container is dropped.
+Before starting the container, the Go orchestrator:
+1. Resolves the target domain to its IP addresses.
+2. Starts an in-process HTTP CONNECT proxy (listening on `0.0.0.0:0`) that only forwards connections whose resolved destination IP is in the allowlist.
+3. Inspects the per-investigation Docker bridge network to get its gateway IP (the host-side address reachable from inside the container).
+4. Passes `HTTP_PROXY` and `HTTPS_PROXY` pointing to `http://<gateway-ip>:<proxy-port>` to the container.
+5. Configures Chromium with `--proxy-server`, `--disable-quic`, and `--disable-dns-over-https` to prevent UDP-based and DoH-based proxy bypass.
 
 Alternatives considered:
 - **`--network none`**: blocks all traffic, so Chromium can't load the page. Not viable.
-- **HTTP proxy (e.g. tinyproxy) on the host**: container routes through a proxy that enforces domain allowlist. Clean and auditable, but adds a dependency and a running process per investigation. Revisit if iptables proves fragile.
+- **Host-side iptables FORWARD rules**: works on Linux only — Docker Desktop on macOS runs containers in a Linux VM so host iptables rules don't reach them. Implemented initially, replaced by proxy for cross-platform parity.
 - **Docker network with `--internal`**: blocks all external egress, same problem as `--network none`.
+- **Privileged setup container writing iptables into the Docker VM**: rules affect the shared VM network namespace; cleanup failures could break unrelated containers. Too dangerous.
 
-Known limitation: if the target page loads resources from additional domains (CDN, tracking pixels, etc.), those requests will fail silently inside the browser. This is acceptable for v1 — the primary page renders, and we're investigating the phishing kit itself, not its third-party dependencies.
+The proxy approach is chosen over iptables because it works identically on macOS and Linux, and the connection log it produces is a useful audit trail. The gateway IP is read from `docker network inspect` so no `--add-host` tricks or platform-specific DNS names are needed.
+
+Known limitation: if the target page loads resources from additional domains (CDN, tracking pixels, etc.), those requests will be blocked by the proxy. This is acceptable for v1 — the primary page renders, and we're investigating the phishing kit itself, not its third-party dependencies.
 
 ### Container security posture
 
@@ -108,6 +116,20 @@ Known limitation: if the target page loads resources from additional domains (CD
 ```
 
 No host mounts. No privileged mode.
+
+**Implementation note — Rod `Leakless` disabled (`Leakless(false)`):**
+
+Rod's launcher normally extracts a helper binary (`leakless`) into `/tmp` at startup to reap orphaned browser processes, then executes it. In a `--read-only` container (even with a tmpfs at `/tmp`), Docker Desktop on macOS prevents execution of binaries written to that tmpfs, causing a `permission denied` at launch.
+
+Options considered:
+
+| Option | Pro | Con |
+|---|---|---|
+| `Leakless(false)` | Simple; leakless unnecessary in Docker since container lifetime = process lifetime | If the process is killed mid-run, Chrome may not be reaped (harmless — container is destroyed anyway) |
+| `--tmpfs /tmp:exec,size=256m` | Keeps leakless enabled | Exec behaviour on tmpfs varies across Docker environments; doesn't address the root cause |
+| Drop `--read-only` | No exec restriction | Significantly weakens security posture; not acceptable |
+
+**Decision:** `Leakless(false)`. The safety property leakless provides (orphan reaping) is irrelevant inside a container.
 
 ---
 
@@ -223,8 +245,11 @@ Database URL from environment variable `DATABASE_URL` (`postgres://...`). No con
 | LLM call fails / rate-limited | Investigation fails; no retry in v1 |
 | LLM does not call `record_hypothesis` | Investigation fails with explicit protocol error |
 | Page serves cloaked content | Not detectable in v1; treated as a successful fetch of whatever was returned |
+| Process killed mid-investigation | Row stays in non-terminal status (`fetching`, `hypothesizing`) indefinitely — **known limitation, v1 accepted** |
 
-The last case is a known limitation. Document it in `agent-notes.md` once the pipeline is running against real phishes, not before.
+The cloaked-content case is a known limitation. Document it in `agent-notes.md` once the pipeline is running against real phishes, not before.
+
+The stuck-row case is also accepted for v1. To manually reset: `UPDATE investigations SET status = 'failed', error_message = 'interrupted' WHERE status NOT IN ('complete', 'failed');` The upgrade path (startup scan) is a 5-line fix deferred until it bites us in practice.
 
 ---
 

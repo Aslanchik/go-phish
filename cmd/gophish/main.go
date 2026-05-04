@@ -17,8 +17,10 @@ import (
 )
 
 func main() {
+	skipLLM := flag.Bool("skip-llm", false, "skip the LLM call and use a stub hypothesis (for testing without an API key)")
+
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: gophish <url>")
+		fmt.Fprintln(os.Stderr, "usage: gophish [--skip-llm] <url>")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Investigates a suspicious URL and prints a structured phishing report.")
 		flag.PrintDefaults()
@@ -36,11 +38,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		fmt.Fprintln(os.Stderr, "error: ANTHROPIC_API_KEY environment variable is not set")
-		os.Exit(1)
+	var llmClient anthropic.Client
+	if !*skipLLM {
+		if os.Getenv("ANTHROPIC_API_KEY") == "" {
+			fmt.Fprintln(os.Stderr, "error: ANTHROPIC_API_KEY environment variable is not set (use --skip-llm to bypass)")
+			os.Exit(1)
+		}
+		llmClient = anthropic.NewClient()
 	}
-	llmClient := anthropic.NewClient()
 
 	conn, err := db.Open()
 	if err != nil {
@@ -89,14 +94,23 @@ func main() {
 		fail("update status: %v", err)
 	}
 
-	screenshotBytes, err := base64.StdEncoding.DecodeString(result.Screenshot)
-	if err != nil {
-		fail("decode screenshot: %v", err)
-	}
-
-	hyp, err := hypothesis.Generate(ctx, &llmClient, screenshotBytes, result.RenderedDOM)
-	if err != nil {
-		fail("hypothesis: %v", err)
+	var hyp hypothesis.Hypothesis
+	if *skipLLM {
+		hyp = hypothesis.Hypothesis{
+			Brand:          "unknown (--skip-llm)",
+			TargetedAction: "other",
+			Confidence:     "low",
+			Reasoning:      "LLM call skipped; no analysis performed.",
+		}
+	} else {
+		screenshotBytes, err := base64.StdEncoding.DecodeString(result.Screenshot)
+		if err != nil {
+			fail("decode screenshot: %v", err)
+		}
+		hyp, err = hypothesis.Generate(ctx, &llmClient, screenshotBytes, result.RenderedDOM)
+		if err != nil {
+			fail("hypothesis: %v", err)
+		}
 	}
 
 	if err := db.UpdateHypothesis(ctx, conn, inv.ID, hyp); err != nil {

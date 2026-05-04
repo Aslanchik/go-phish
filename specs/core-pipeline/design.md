@@ -159,6 +159,8 @@ If the model does not call `record_hypothesis` (calls nothing, or returns a text
 
 goose supports embedded migrations (the migration SQL files are embedded in the binary via `embed.FS`), so there is no separate migration binary or manual file distribution. Migrations run at application startup if there are unapplied ones. golang-migrate is equally capable, but goose's Go-native embedding story is cleaner for a CLI tool that runs on a single laptop.
 
+Migration files live at `internal/db/migrations/` (not a top-level `migrations/` directory). The `go:embed` directive cannot traverse `../`, so the files must be inside the package tree of the embedding file (`internal/db/`). This is the only structural divergence from the initial directory layout sketch.
+
 ### Schema
 
 ```sql

@@ -99,6 +99,24 @@ func UpdateHypothesis(ctx context.Context, conn *sql.DB, id string, h hypothesis
 	return nil
 }
 
+func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigation, error) {
+	var inv Investigation
+	err := conn.QueryRowContext(ctx, `
+		SELECT id, url, created_at, status, error_message,
+		       final_url, rendered_dom, screenshot,
+		       network_log, js_files, forms, hypothesis, report
+		FROM investigations WHERE id = $1
+	`, id).Scan(
+		&inv.ID, &inv.URL, &inv.CreatedAt, &inv.Status, &inv.ErrorMessage,
+		&inv.FinalURL, &inv.RenderedDOM, &inv.Screenshot,
+		&inv.NetworkLog, &inv.JSFiles, &inv.Forms, &inv.Hypothesis, &inv.Report,
+	)
+	if err != nil {
+		return Investigation{}, fmt.Errorf("get investigation: %w", err)
+	}
+	return inv, nil
+}
+
 func UpdateReport(ctx context.Context, conn *sql.DB, id, report string) error {
 	_, err := conn.ExecContext(ctx, `
 		UPDATE investigations SET report = $1 WHERE id = $2

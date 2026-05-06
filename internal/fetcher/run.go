@@ -36,7 +36,7 @@ func Run(ctx context.Context, targetURL string) (FetchResult, error) {
 	}
 
 	networkName := fmt.Sprintf("gophish-%d", time.Now().UnixNano())
-	if _, err := createNetwork(ctx, networkName); err != nil {
+	if err := createNetwork(ctx, networkName); err != nil {
 		return FetchResult{}, fmt.Errorf("create network: %w", err)
 	}
 	defer removeNetwork(networkName)
@@ -63,13 +63,12 @@ func extractHost(rawURL string) (string, error) {
 	return h, nil
 }
 
-func createNetwork(ctx context.Context, name string) (string, error) {
-	out, err := exec.CommandContext(ctx, "docker", "network", "create", "--driver", "bridge", name).Output()
+func createNetwork(ctx context.Context, name string) error {
+	_, err := exec.CommandContext(ctx, "docker", "network", "create", "--driver", "bridge", name).Output()
 	if err != nil {
-		return "", fmt.Errorf("docker network create: %w", err)
+		return fmt.Errorf("docker network create: %w", err)
 	}
-	_ = out
-	return "", nil
+	return nil
 }
 
 func removeNetwork(name string) {

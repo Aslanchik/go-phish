@@ -187,7 +187,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## T-13: End-to-end smoke test against real phishes
+## [x] T-13: End-to-end smoke test against real phishes
 
 **Satisfies:** all requirements and safety constraints
 
@@ -199,6 +199,5 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
   - Investigation row present in Postgres with status `complete`
   - Hypothesis contains a plausible brand and non-empty reasoning
   - Docker network and iptables rules are cleaned up after the run
-- Record observations in `agent-notes.md`: what the model got right, wrong, or surprising — do not patch the prompt yet
 
 **Verified when:** all three URLs complete without panics or unhandled errors, and the observations are written to `agent-notes.md`

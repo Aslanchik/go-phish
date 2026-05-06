@@ -41,7 +41,7 @@ func CreateInvestigation(ctx context.Context, conn *sql.DB, url string) (Investi
 	return inv, nil
 }
 
-func UpdateStatus(ctx context.Context, conn *sql.DB, id, status, errMsg string) error {
+func UpdateStatus(ctx context.Context, conn *sql.DB, id string, status Status, errMsg string) error {
 	var nullErr sql.NullString
 	if errMsg != "" {
 		nullErr = sql.NullString{String: errMsg, Valid: true}

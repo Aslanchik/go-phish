@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
@@ -16,11 +17,7 @@ const (
 )
 
 // ErrNoToolCall is returned when the model responds without calling record_hypothesis.
-type ErrNoToolCall struct{}
-
-func (ErrNoToolCall) Error() string {
-	return "model did not call record_hypothesis; cannot parse hypothesis"
-}
+var ErrNoToolCall = errors.New("model did not call record_hypothesis; cannot parse hypothesis")
 
 // Generate calls the Anthropic API with a screenshot and rendered DOM to produce
 // a structured phishing hypothesis. The client must be initialised with a valid
@@ -65,7 +62,7 @@ func Generate(ctx context.Context, client *anthropic.Client, screenshotPNG []byt
 		}
 		return h, nil
 	}
-	return Hypothesis{}, ErrNoToolCall{}
+	return Hypothesis{}, ErrNoToolCall
 }
 
 func recordHypothesisSchema() anthropic.ToolInputSchemaParam {

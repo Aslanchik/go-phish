@@ -38,64 +38,63 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := run(context.Background(), rawURL, *skipLLM); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context, rawURL string, skipLLM bool) error {
 	var llmClient anthropic.Client
-	if !*skipLLM {
+	if !skipLLM {
 		if os.Getenv("ANTHROPIC_API_KEY") == "" {
-			fmt.Fprintln(os.Stderr, "error: ANTHROPIC_API_KEY environment variable is not set (use --skip-llm to bypass)")
-			os.Exit(1)
+			return fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set (use --skip-llm to bypass)")
 		}
 		llmClient = anthropic.NewClient()
 	}
 
 	conn, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 	defer conn.Close()
 
 	if err := db.RunMigrations(conn); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return err
 	}
-
-	ctx := context.Background()
 
 	inv, err := db.CreateInvestigation(ctx, conn, rawURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: create investigation: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("create investigation: %w", err)
 	}
 
-	fail := func(msg string, args ...any) {
-		errMsg := fmt.Sprintf(msg, args...)
-		fmt.Fprintln(os.Stderr, "error:", errMsg)
-		_ = db.UpdateStatus(ctx, conn, inv.ID, "failed", errMsg)
-		os.Exit(1)
+	// fail updates the investigation to failed status and returns an error
+	// so the caller can propagate it up and exit non-zero.
+	fail := func(msg string, args ...any) error {
+		err := fmt.Errorf(msg, args...)
+		_ = db.UpdateStatus(ctx, conn, inv.ID, db.StatusFailed, err.Error())
+		return err
 	}
 
-	if err := db.UpdateStatus(ctx, conn, inv.ID, "fetching", ""); err != nil {
-		fmt.Fprintf(os.Stderr, "error: update status: %v\n", err)
-		os.Exit(1)
+	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusFetching, ""); err != nil {
+		return fmt.Errorf("update status: %w", err)
 	}
 
 	result, err := fetcher.Run(ctx, rawURL)
 	if err != nil {
-		fail("fetch: %v", err)
+		return fail("fetch: %w", err)
 	}
 
 	if err := db.UpdateArtifacts(ctx, conn, inv.ID, result); err != nil {
-		fail("store artifacts: %v", err)
+		return fail("store artifacts: %w", err)
 	}
-	inv.FinalURL.String = result.FinalURL
-	inv.FinalURL.Valid = true
 
-	if err := db.UpdateStatus(ctx, conn, inv.ID, "hypothesizing", ""); err != nil {
-		fail("update status: %v", err)
+	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusHypothesizing, ""); err != nil {
+		return fail("update status: %w", err)
 	}
 
 	var hyp hypothesis.Hypothesis
-	if *skipLLM {
+	if skipLLM {
 		hyp = hypothesis.Hypothesis{
 			Brand:          "unknown (--skip-llm)",
 			TargetedAction: "other",
@@ -105,34 +104,34 @@ func main() {
 	} else {
 		screenshotBytes, err := base64.StdEncoding.DecodeString(result.Screenshot)
 		if err != nil {
-			fail("decode screenshot: %v", err)
+			return fail("decode screenshot: %w", err)
 		}
 		hyp, err = hypothesis.Generate(ctx, &llmClient, screenshotBytes, result.RenderedDOM)
 		if err != nil {
-			fail("hypothesis: %v", err)
+			return fail("hypothesis: %w", err)
 		}
 	}
 
 	if err := db.UpdateHypothesis(ctx, conn, inv.ID, hyp); err != nil {
-		fail("store hypothesis: %v", err)
+		return fail("store hypothesis: %w", err)
 	}
 
-	if err := db.UpdateStatus(ctx, conn, inv.ID, "complete", ""); err != nil {
-		fail("update status: %v", err)
+	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusComplete, ""); err != nil {
+		return fail("update status: %w", err)
 	}
 
-	// Re-read the updated investigation row so the report has all fields.
 	inv, err = db.GetInvestigation(ctx, conn, inv.ID)
 	if err != nil {
-		fail("read investigation: %v", err)
+		return fail("read investigation: %w", err)
 	}
 
 	reportText := report.Format(inv)
 	if err := db.UpdateReport(ctx, conn, inv.ID, reportText); err != nil {
-		fail("store report: %v", err)
+		return fail("store report: %w", err)
 	}
 
 	report.Print(inv)
+	return nil
 }
 
 func validateURL(raw string) error {

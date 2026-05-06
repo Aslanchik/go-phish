@@ -8,8 +8,7 @@ import (
 )
 
 func TestErrNoToolCall_Error(t *testing.T) {
-	err := hypothesis.ErrNoToolCall{}
-	if err.Error() == "" {
+	if hypothesis.ErrNoToolCall.Error() == "" {
 		t.Error("ErrNoToolCall.Error() returned empty string")
 	}
 }

@@ -98,6 +98,7 @@ When `design.md` covers one of these, explicitly list alternatives considered an
 - **When the agent does something wrong, understand the failure mode first.** Document it in `agent-notes.md` before changing anything. Half the value of this project is seeing failure modes clearly.
 - **Commit after each completed task.** Git history tells the story.
 - **Delete compiled binaries after build/test.** Never leave `gophish`, `docker/fetcher/fetcher`, or any other output binary as an untracked file. Remove them immediately after the build or test step that produced them.
+- **Keep `docs/` up to date.** After completing any feature that changes the pipeline, schema, or package structure: update the relevant diagram(s) in `docs/` in the same branch and PR. Diagrams are: `docs/architecture.md` (pipeline + packages), `docs/data-model.md` (ER + status transitions), `docs/egress-proxy.md` (proxy topology). A feature PR that touches these areas is not complete until the docs reflect the change.
 
 ## Out of scope for v1
 

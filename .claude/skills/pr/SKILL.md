@@ -40,17 +40,30 @@ go build ./...
 
 Must compile cleanly.
 
-### 4. Stage and commit any uncommitted changes
+### 4. Docs check
+
+Look at the diff stat above. If any of the following areas changed, verify the corresponding `docs/` file has been updated in this branch too. If it hasn't, **stop and tell the user before continuing**.
+
+| Changed area | Required doc update |
+|---|---|
+| Pipeline flow, phase logic, DB writes (`cmd/`, `internal/fetcher/`, `internal/hypothesis/`, `internal/agent/`, `internal/synthesis/`) | `docs/architecture.md` — pipeline flowchart and/or phase descriptions |
+| Postgres schema or migrations (`internal/db/migrations/`) | `docs/data-model.md` — ER diagram, status transitions, or column notes |
+| Package structure (new `internal/` packages added or removed) | `docs/architecture.md` — package structure diagram |
+| Egress proxy behaviour (`internal/fetcher/proxy.go`, `docker/fetcher/`) | `docs/egress-proxy.md` — topology or bypass-vector table |
+
+If none of these areas were touched, continue to the next step.
+
+### 5. Stage and commit any uncommitted changes
 
 If `git status` shows uncommitted changes, stage and commit them now using a conventional commit message.
 
-### 5. Push the branch
+### 6. Push the branch
 
 ```bash
 git push -u origin $(git branch --show-current)
 ```
 
-### 6. Create the pull request
+### 7. Create the pull request
 
 Use the context above to write the PR title and body. The body should read like a work summary:
 
@@ -77,7 +90,7 @@ gh pr create --title "<title>" --body "<body>"
 
 Return the PR URL when done.
 
-### 7. Switch back to main
+### 8. Switch back to main
 
 ```bash
 git checkout main

@@ -18,6 +18,8 @@ erDiagram
         jsonb   forms
         jsonb   hypothesis
         text    report
+        jsonb   enrichment_trace
+        text    enrichment_summary
     }
 
     eval_labels {
@@ -41,10 +43,12 @@ stateDiagram-v2
     [*] --> pending : CreateInvestigation
     pending --> fetching : fetcher.Run started
     fetching --> hypothesizing : UpdateArtifacts
-    hypothesizing --> complete : UpdateReport
+    hypothesizing --> enriching : UpdateEnrichment
+    enriching --> complete : UpdateReport
     pending --> failed : any error
     fetching --> failed : any error
     hypothesizing --> failed : any error
+    enriching --> failed : any error
 ```
 
 ## Column notes
@@ -53,11 +57,13 @@ stateDiagram-v2
 
 | Column | Phase | Notes |
 |---|---|---|
-| `status` | all | Enum-like: `pending` → `fetching` → `hypothesizing` → `complete` / `failed` |
+| `status` | all | Enum-like: `pending` → `fetching` → `hypothesizing` → `enriching` → `complete` / `failed` |
 | `network_log` | 1 | Array of `{url, method, status, content_type}` objects from Rod |
 | `js_files` | 1 | Array of `{url, content}` objects for inline/external scripts |
 | `forms` | 1 | Array of `{action, method, fields[]}` objects |
 | `hypothesis` | 2 | `{brand, targeted_action, confidence, reasoning}` — LLM output |
+| `enrichment_trace` | 3 | Ordered array of `{tool, input, output, called_at}` records from the agent loop |
+| `enrichment_summary` | 3 | Final text response from the model when it signals completion |
 | `report` | 4 | Final plain-text report stored after synthesis |
 
 ### `eval_labels`

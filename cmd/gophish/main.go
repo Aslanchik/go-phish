@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/url"
@@ -10,10 +11,12 @@ import (
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 
+	"github.com/aslanchik/go-phish/internal/agent"
 	"github.com/aslanchik/go-phish/internal/db"
 	"github.com/aslanchik/go-phish/internal/fetcher"
 	"github.com/aslanchik/go-phish/internal/hypothesis"
 	"github.com/aslanchik/go-phish/internal/report"
+	"github.com/aslanchik/go-phish/internal/tools"
 )
 
 func main() {
@@ -114,6 +117,36 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 
 	if err := db.UpdateHypothesis(ctx, conn, inv.ID, hyp); err != nil {
 		return fail("store hypothesis: %w", err)
+	}
+
+	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusEnriching, ""); err != nil {
+		return fail("update status: %w", err)
+	}
+
+	inv, err = db.GetInvestigation(ctx, conn, inv.ID)
+	if err != nil {
+		return fail("read investigation before enrichment: %w", err)
+	}
+
+	if !skipLLM {
+		toolServer, err := tools.New(ctx, &llmClient)
+		if err != nil {
+			return fail("start tool server: %w", err)
+		}
+		defer toolServer.Stop()
+
+		enrichTrace, enrichSummary, err := agent.Run(ctx, inv, &llmClient, toolServer.Client)
+		if err != nil {
+			return fail("enrichment: %w", err)
+		}
+
+		traceJSON, err := json.Marshal(enrichTrace)
+		if err != nil {
+			return fail("marshal enrichment trace: %w", err)
+		}
+		if err := db.UpdateEnrichment(ctx, conn, inv.ID, traceJSON, enrichSummary); err != nil {
+			return fail("store enrichment: %w", err)
+		}
 	}
 
 	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusComplete, ""); err != nil {

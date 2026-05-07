@@ -24,8 +24,10 @@ type Investigation struct {
 	NetworkLog   json.RawMessage
 	JSFiles      json.RawMessage
 	Forms        json.RawMessage
-	Hypothesis   json.RawMessage
-	Report       sql.NullString
+	Hypothesis        json.RawMessage
+	Report            sql.NullString
+	EnrichmentTrace   json.RawMessage
+	EnrichmentSummary sql.NullString
 }
 
 func CreateInvestigation(ctx context.Context, conn *sql.DB, url string) (Investigation, error) {
@@ -104,17 +106,29 @@ func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigati
 	err := conn.QueryRowContext(ctx, `
 		SELECT id, url, created_at, status, error_message,
 		       final_url, rendered_dom, screenshot,
-		       network_log, js_files, forms, hypothesis, report
+		       network_log, js_files, forms, hypothesis, report,
+		       enrichment_trace, enrichment_summary
 		FROM investigations WHERE id = $1
 	`, id).Scan(
 		&inv.ID, &inv.URL, &inv.CreatedAt, &inv.Status, &inv.ErrorMessage,
 		&inv.FinalURL, &inv.RenderedDOM, &inv.Screenshot,
 		&inv.NetworkLog, &inv.JSFiles, &inv.Forms, &inv.Hypothesis, &inv.Report,
+		&inv.EnrichmentTrace, &inv.EnrichmentSummary,
 	)
 	if err != nil {
 		return Investigation{}, fmt.Errorf("get investigation: %w", err)
 	}
 	return inv, nil
+}
+
+func UpdateEnrichment(ctx context.Context, conn *sql.DB, id string, trace json.RawMessage, summary string) error {
+	_, err := conn.ExecContext(ctx, `
+		UPDATE investigations SET enrichment_trace = $1, enrichment_summary = $2 WHERE id = $3
+	`, trace, summary, id)
+	if err != nil {
+		return fmt.Errorf("update enrichment: %w", err)
+	}
+	return nil
 }
 
 func UpdateReport(ctx context.Context, conn *sql.DB, id, report string) error {

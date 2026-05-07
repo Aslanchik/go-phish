@@ -2,7 +2,7 @@
 
 `go-phish` takes a suspicious URL and produces a structured phishing investigation report: brand impersonated, kit mechanics, credential exfiltration destination, and a verdict with per-claim confidence scores.
 
-The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. Phases 1–2 are built; Phases 3–4 are planned.
+The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. Phases 1–3 foundation is built; Phase 3 tools are being added in parallel; Phase 4 is planned.
 
 ## Pipeline
 
@@ -20,8 +20,9 @@ flowchart TD
         LLM["Claude Sonnet\ntool_use: record_hypothesis"]
     end
 
-    subgraph P3["Phase 3 — Enrichment  ·  planned"]
-        Tools["MCP Tool Server\nwhois · crt.sh · urlscan · virustotal · analyze_js"]
+    subgraph P3["Phase 3 — Enrichment"]
+        AgentLoop["Agent loop\ninternal/agent"]
+        MCPServer["MCP Tool Server\ninternal/tools\nwhois · crt.sh · urlscan · urlhaus · analyze_js"]
     end
 
     subgraph P4["Phase 4 — Synthesis  ·  planned"]
@@ -39,8 +40,9 @@ flowchart TD
     P1 -->|"DOM · screenshot · network log · JS · forms"| DB
     DB --> P2
     P2 -->|"brand · action · confidence · reasoning"| DB
-    DB --> P3
-    P3 --> DB
+    DB --> AgentLoop
+    AgentLoop <--> MCPServer
+    AgentLoop -->|"enrichment_trace · summary"| DB
     DB --> P4
     P4 -->|"complete"| DB
     P4 --> Report
@@ -60,11 +62,11 @@ The screenshot and a structured DOM summary are sent to Claude Sonnet via the An
 
 This is a single-turn call — no agent loop yet. The result is stored in the `hypothesis` JSONB column.
 
-### Phase 3 — Enrichment *(planned)*
+### Phase 3 — Enrichment
 
-An agentic loop gives the model access to an MCP tool server and lets it decide what to investigate and in what order. Planned tools: `whois_lookup`, `cert_transparency`, `urlscan_lookup`, `virustotal_lookup`, `urlhaus_check`, `compare_to_brand_login`, `analyze_js`, `analyze_form`.
+An agentic loop (`internal/agent`) gives the model access to an in-process MCP tool server (`internal/tools`) and lets it decide what to investigate and in what order. The loop runs until the model responds with no tool calls or an iteration cap is reached (default 10, configurable via `ENRICHMENT_MAX_TURNS`). Every tool call and result is recorded in `enrichment_trace` and persisted before Phase 4 begins.
 
-The loop runs until the model signals it is done or a cap is reached.
+Tools: `whois_lookup`, `cert_transparency`, `urlscan_lookup`, `urlhaus_check`, `analyze_js`. The MCP server uses an in-process transport — no network socket, same binary.
 
 ### Phase 4 — Synthesis *(planned)*
 
@@ -83,8 +85,8 @@ graph LR
         report["report\nplain-text formatter"]
         enrichment["enrichment\n(stub)"]
         synthesis["synthesis\n(stub)"]
-        agent["agent\n(stub)"]
-        tools["tools\n(stub)"]
+        agent["agent\nagent loop · MCP dispatch"]
+        tools["tools\nMCP server · tool handlers"]
     end
 
     subgraph docker["docker/fetcher"]
@@ -95,6 +97,9 @@ graph LR
     cmd --> hypothesis
     cmd --> db
     cmd --> report
+    cmd --> agent
+    cmd --> tools
+    agent --> tools
     fetcher --> fetcherbin
 ```
 
@@ -104,5 +109,5 @@ graph LR
 |---|---|---|
 | 1 | Containerised fetch with egress restriction | ✅ Built |
 | 2 | LLM hypothesis via `record_hypothesis` tool | ✅ Built |
-| 3 | Enrichment agent loop (MCP tool server) | 🔲 Planned |
+| 3 | Enrichment agent loop (MCP tool server) | 🔨 In progress (tools being added) |
 | 4 | Synthesis with per-claim confidence | 🔲 Planned |

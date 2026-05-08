@@ -77,5 +77,11 @@ func (s *Server) Stop() error {
 //	return nil, err                            — MCP protocol error (loop aborts)
 func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
 	// Phase B agents register tools here.
-	_ = s
+	s.AddTool(
+		mcp.NewTool("cert_transparency",
+			mcp.WithDescription("Look up certificate transparency logs for a domain via crt.sh. Returns recently issued certificates including SANs."),
+			mcp.WithString("domain", mcp.Required(), mcp.Description("Domain to search (e.g. example.com)")),
+		),
+		certTransparencyHandler,
+	)
 }

@@ -41,10 +41,10 @@ erDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> pending : CreateInvestigation
-    pending --> fetching : fetcher.Run started
-    fetching --> hypothesizing : UpdateArtifacts
-    hypothesizing --> enriching : UpdateEnrichment
-    enriching --> complete : UpdateReport
+    pending --> fetching : UpdateStatus(fetching)
+    fetching --> hypothesizing : UpdateStatus(hypothesizing)
+    hypothesizing --> enriching : UpdateStatus(enriching)
+    enriching --> complete : UpdateStatus(complete)
     pending --> failed : any error
     fetching --> failed : any error
     hypothesizing --> failed : any error

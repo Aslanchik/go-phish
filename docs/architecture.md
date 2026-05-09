@@ -2,7 +2,7 @@
 
 `go-phish` takes a suspicious URL and produces a structured phishing investigation report: brand impersonated, kit mechanics, credential exfiltration destination, and a verdict with per-claim confidence scores.
 
-The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. Phases 1–3 foundation is built; Phase 3 tools are being added in parallel; Phase 4 is planned.
+The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. Phases 1–3 are built; Phase 4 is planned.
 
 ## Pipeline
 
@@ -83,8 +83,6 @@ graph LR
         hypothesis["hypothesis\nDOM summary · LLM call"]
         db["db\nmigrations · CRUD"]
         report["report\nplain-text formatter"]
-        enrichment["enrichment\n(stub)"]
-        synthesis["synthesis\n(stub)"]
         agent["agent\nagent loop · MCP dispatch"]
         tools["tools\nMCP server · tool handlers"]
     end
@@ -109,5 +107,5 @@ graph LR
 |---|---|---|
 | 1 | Containerised fetch with egress restriction | ✅ Built |
 | 2 | LLM hypothesis via `record_hypothesis` tool | ✅ Built |
-| 3 | Enrichment agent loop (MCP tool server) | 🔨 In progress (tools being added) |
+| 3 | Enrichment agent loop (MCP tool server) | ✅ Built |
 | 4 | Synthesis with per-claim confidence | 🔲 Planned |

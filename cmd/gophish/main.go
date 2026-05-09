@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 
@@ -83,6 +84,7 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		return fmt.Errorf("update status: %w", err)
 	}
 
+	log.Printf("phase 1: fetching %s", rawURL)
 	result, err := fetcher.Run(ctx, rawURL)
 	if err != nil {
 		return fail("fetch: %w", err)
@@ -96,6 +98,7 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		return fail("update status: %w", err)
 	}
 
+	log.Printf("phase 2: generating hypothesis")
 	var hyp hypothesis.Hypothesis
 	if skipLLM {
 		hyp = hypothesis.Hypothesis{
@@ -123,6 +126,7 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		return fail("update status: %w", err)
 	}
 
+	log.Printf("phase 3: starting enrichment agent loop")
 	inv, err = db.GetInvestigation(ctx, conn, inv.ID)
 	if err != nil {
 		return fail("read investigation before enrichment: %w", err)
@@ -139,6 +143,7 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		if err != nil {
 			return fail("enrichment: %w", err)
 		}
+		log.Printf("phase 3: complete — %d tool calls", len(enrichTrace))
 
 		traceJSON, err := json.Marshal(enrichTrace)
 		if err != nil {

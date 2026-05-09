@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -58,6 +59,7 @@ func Run(
 	}
 
 	for turn := 0; turn < maxTurns; turn++ {
+		log.Printf("enrichment: turn %d/%d", turn+1, maxTurns)
 		resp, err := anthropicClient.Messages.New(ctx, anthropic.MessageNewParams{
 			Model:     model,
 			MaxTokens: maxTokens,
@@ -79,6 +81,7 @@ func Run(
 				continue
 			}
 
+			log.Printf("enrichment: → %s %s", tu.Name, truncate(string(tu.Input), 120))
 			output, callErr := dispatchTool(ctx, mcpClient, tu.Name, tu.Input)
 			tc := ToolCall{
 				Tool:     tu.Name,
@@ -102,6 +105,7 @@ func Run(
 					break
 				}
 			}
+			log.Printf("enrichment: model signalled done — %d tool calls across %d turns", len(trace), turn+1)
 			return trace, summary, nil
 		}
 
@@ -110,7 +114,16 @@ func Run(
 	}
 
 	// Cap reached — return what we have.
+	log.Printf("enrichment: iteration cap reached (%d turns) — %d tool calls", maxTurns, len(trace))
 	return trace, summary, nil
+}
+
+// truncate shortens s to at most n bytes, appending "…" if cut.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }
 
 // buildToolList fetches tools from the MCP server and converts them to the

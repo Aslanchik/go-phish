@@ -85,10 +85,31 @@ func registerTools(s *mcpserver.MCPServer, anthropicClient *anthropic.Client) {
 		certTransparencyHandler,
 	)
 	s.AddTool(
-		mcp.NewTool("analyze_js",
+		mcp.NewTool("urlhaus_check",
+			mcp.WithDescription("Check a URL or domain against the URLhaus abuse database. Pass a full URL (https://...) or a bare domain."),
+			mcp.WithString("url_or_domain", mcp.Required(), mcp.Description("Full URL (https://...) or bare domain to check")),
+		),
+		urlhausHandler,
+	)
+  s.AddTool(
+    mcp.NewTool("whois_lookup",
+			mcp.WithDescription("Query WHOIS registration data for a domain. Registration date is the highest-signal field."),
+			mcp.WithString("domain", mcp.Required(), mcp.Description("Domain to query (e.g. example.com)")),
+		),
+		whoisHandler,
+  )
+  s.AddTool(
+    mcp.NewTool("urlscan_lookup",
+			mcp.WithDescription("Search urlscan.io for prior scans of a URL. Returns verdicts, tags, and scan dates."),
+			mcp.WithString("url", mcp.Required(), mcp.Description("URL to search for (e.g. https://example.com/path)")),
+		),
+		urlscanHandler,
+  )
+  s.AddTool(
+    mcp.NewTool("analyze_js",
 			mcp.WithDescription("Analyse JavaScript from a phishing page. Identifies kit name, exfiltration URLs, obfuscation, and notable strings."),
 			mcp.WithString("js_content", mcp.Required(), mcp.Description("Raw JavaScript content to analyse")),
 		),
 		makeAnalyzeJSHandler(anthropicClient),
-	)
+  )
 }

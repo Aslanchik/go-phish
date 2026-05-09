@@ -75,7 +75,7 @@ func (s *Server) Stop() error {
 //
 //	mcp.NewToolResultText(`{"error":"..."}`)   — tool-level error (model sees it)
 //	return nil, err                            — MCP protocol error (loop aborts)
-func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
+func registerTools(s *mcpserver.MCPServer, anthropicClient *anthropic.Client) {
 	// Phase B agents register tools here.
 	s.AddTool(
 		mcp.NewTool("cert_transparency",
@@ -83,5 +83,12 @@ func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
 			mcp.WithString("domain", mcp.Required(), mcp.Description("Domain to search (e.g. example.com)")),
 		),
 		certTransparencyHandler,
+	)
+	s.AddTool(
+		mcp.NewTool("analyze_js",
+			mcp.WithDescription("Analyse JavaScript from a phishing page. Identifies kit name, exfiltration URLs, obfuscation, and notable strings."),
+			mcp.WithString("js_content", mcp.Required(), mcp.Description("Raw JavaScript content to analyse")),
+		),
+		makeAnalyzeJSHandler(anthropicClient),
 	)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/aslanchik/go-phish/internal/fetcher"
 	"github.com/aslanchik/go-phish/internal/hypothesis"
 	"github.com/aslanchik/go-phish/internal/report"
+	"github.com/aslanchik/go-phish/internal/synthesis"
 	"github.com/aslanchik/go-phish/internal/tools"
 )
 
@@ -152,6 +153,41 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		if err := db.UpdateEnrichment(ctx, conn, inv.ID, traceJSON, enrichSummary); err != nil {
 			return fail("store enrichment: %w", err)
 		}
+	}
+
+	log.Printf("phase 4: synthesising findings")
+	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusSynthesizing, ""); err != nil {
+		return fail("update status: %w", err)
+	}
+
+	inv, err = db.GetInvestigation(ctx, conn, inv.ID)
+	if err != nil {
+		return fail("read investigation before synthesis: %w", err)
+	}
+
+	var synthResult synthesis.Result
+	if skipLLM {
+		skipped := synthesis.Claim{Confidence: "low", Evidence: "LLM call skipped; no analysis performed"}
+		synthResult = synthesis.Result{
+			BrandImpersonated:   skipped,
+			KitIdentification:   skipped,
+			ExfilTarget:         skipped,
+			InfrastructureNotes: skipped,
+			Verdict:             synthesis.Claim{Value: "inconclusive", Confidence: "low", Evidence: "LLM call skipped; no analysis performed"},
+		}
+	} else {
+		synthResult, err = synthesis.Generate(ctx, &llmClient, inv)
+		if err != nil {
+			return fail("synthesis: %w", err)
+		}
+	}
+
+	synthJSON, err := json.Marshal(synthResult)
+	if err != nil {
+		return fail("marshal synthesis result: %w", err)
+	}
+	if err := db.UpdateSynthesis(ctx, conn, inv.ID, synthJSON); err != nil {
+		return fail("store synthesis: %w", err)
 	}
 
 	if err := db.UpdateStatus(ctx, conn, inv.ID, db.StatusComplete, ""); err != nil {

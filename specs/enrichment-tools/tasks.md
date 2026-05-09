@@ -11,7 +11,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ## Phase A — Foundation (sequential)
 
-### [ ] ET-F1: Add dependencies
+### [x] ET-F1: Add dependencies
 
 **Satisfies:** ET-2 (MCP server), ET-3 (whois_lookup)
 
@@ -27,7 +27,7 @@ go get github.com/likexian/whois-parser
 
 ---
 
-### [ ] ET-F2: Migration 0003 — enrichment columns
+### [x] ET-F2: Migration 0003 — enrichment columns
 
 **Satisfies:** ET-8
 
@@ -49,7 +49,7 @@ ALTER TABLE investigations
 
 ---
 
-### [ ] ET-F3: db — enriching status + UpdateEnrichment
+### [x] ET-F3: db — enriching status + UpdateEnrichment
 
 **Satisfies:** ET-8
 
@@ -69,7 +69,7 @@ Stores `enrichment_trace` and `enrichment_summary` on the investigations row.
 
 ---
 
-### [ ] ET-F4: MCP server scaffold
+### [x] ET-F4: MCP server scaffold
 
 **Satisfies:** ET-2
 
@@ -98,7 +98,7 @@ func (s *Server) Stop(ctx context.Context) error
 
 ---
 
-### [ ] ET-F5: Agent loop
+### [x] ET-F5: Agent loop
 
 **Satisfies:** ET-1
 
@@ -135,7 +135,7 @@ Error handling: tool errors are returned to the model as structured tool results
 
 ---
 
-### [ ] ET-F6: Wire Phase 3 into main pipeline
+### [x] ET-F6: Wire Phase 3 into main pipeline
 
 **Satisfies:** ET-1, ET-8
 
@@ -179,7 +179,7 @@ Return results as JSON text: `mcp.NewToolResultText(jsonStr)`. Return errors as 
 
 ---
 
-### [ ] ET-T1: whois_lookup tool
+### [x] ET-T1: whois_lookup tool
 
 **Satisfies:** ET-3
 
@@ -216,7 +216,7 @@ Write `internal/tools/whois_test.go` with at least:
 
 ---
 
-### [ ] ET-T2: cert_transparency tool
+### [x] ET-T2: cert_transparency tool
 
 **Satisfies:** ET-4
 
@@ -258,7 +258,7 @@ Write `internal/tools/crtsh_test.go` with at least:
 
 ---
 
-### [ ] ET-T3: urlscan_lookup tool
+### [x] ET-T3: urlscan_lookup tool
 
 **Satisfies:** ET-5
 
@@ -299,7 +299,7 @@ Write `internal/tools/urlscan_test.go` with at least:
 
 ---
 
-### [ ] ET-T4: urlhaus_check tool
+### [x] ET-T4: urlhaus_check tool
 
 **Satisfies:** ET-6
 
@@ -338,7 +338,7 @@ Write `internal/tools/urlhaus_test.go` with at least:
 
 ---
 
-### [ ] ET-T5: analyze_js tool
+### [x] ET-T5: analyze_js tool
 
 **Satisfies:** ET-7
 
@@ -380,7 +380,7 @@ Write `internal/tools/analyzejs_test.go` with at least:
 
 ## Phase C — Integration (sequential)
 
-### [ ] ET-I1: Register all tools and smoke test
+### [x] ET-I1: Register all tools and smoke test
 
 **Satisfies:** ET-1, ET-2, ET-3, ET-4, ET-5, ET-6, ET-7
 
@@ -398,7 +398,7 @@ After all Phase B PRs are merged:
 
 ---
 
-### [ ] ET-I2: Update docs
+### [x] ET-I2: Update docs
 
 **Satisfies:** CLAUDE.md working agreement
 

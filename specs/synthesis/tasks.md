@@ -6,7 +6,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ---
 
-## [ ] SP-T1: Migration 0004 — synthesis column
+## [x] SP-T1: Migration 0004 — synthesis column
 
 **Satisfies:** SP-3
 
@@ -26,7 +26,7 @@ ALTER TABLE investigations
 
 ---
 
-## [ ] SP-T2: db — synthesizing status + UpdateSynthesis
+## [x] SP-T2: db — synthesizing status + UpdateSynthesis
 
 **Satisfies:** SP-3, SP-5
 
@@ -46,7 +46,7 @@ Writes `result` to the `synthesis` column on the matching row.
 
 ---
 
-## [ ] SP-T3: synthesis.Generate
+## [x] SP-T3: synthesis.Generate
 
 **Satisfies:** SP-1, SP-2
 
@@ -103,7 +103,7 @@ Write `internal/synthesis/synthesis_test.go` with at least:
 
 ---
 
-## [ ] SP-T4: Update report.Format
+## [x] SP-T4: Update report.Format
 
 **Satisfies:** SP-4
 
@@ -150,7 +150,7 @@ Label column width: 22 characters (consistent with existing `%-20s` pattern — 
 
 ---
 
-## [ ] SP-T5: Wire synthesis into main pipeline
+## [x] SP-T5: Wire synthesis into main pipeline
 
 **Satisfies:** SP-5
 
@@ -170,7 +170,7 @@ Add `log.Printf("phase 4: synthesising findings")` before step 1, consistent wit
 
 ---
 
-## [ ] SP-T6: End-to-end smoke test
+## [x] SP-T6: End-to-end smoke test
 
 **Satisfies:** all requirements
 

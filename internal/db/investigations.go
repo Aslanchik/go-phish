@@ -103,6 +103,7 @@ func UpdateHypothesis(ctx context.Context, conn *sql.DB, id string, h hypothesis
 
 func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigation, error) {
 	var inv Investigation
+	var enrichmentTrace []byte
 	err := conn.QueryRowContext(ctx, `
 		SELECT id, url, created_at, status, error_message,
 		       final_url, rendered_dom, screenshot,
@@ -113,11 +114,12 @@ func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigati
 		&inv.ID, &inv.URL, &inv.CreatedAt, &inv.Status, &inv.ErrorMessage,
 		&inv.FinalURL, &inv.RenderedDOM, &inv.Screenshot,
 		&inv.NetworkLog, &inv.JSFiles, &inv.Forms, &inv.Hypothesis, &inv.Report,
-		&inv.EnrichmentTrace, &inv.EnrichmentSummary,
+		&enrichmentTrace, &inv.EnrichmentSummary,
 	)
 	if err != nil {
 		return Investigation{}, fmt.Errorf("get investigation: %w", err)
 	}
+	inv.EnrichmentTrace = json.RawMessage(enrichmentTrace)
 	return inv, nil
 }
 

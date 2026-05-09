@@ -76,7 +76,6 @@ func (s *Server) Stop() error {
 //	mcp.NewToolResultText(`{"error":"..."}`)   — tool-level error (model sees it)
 //	return nil, err                            — MCP protocol error (loop aborts)
 func registerTools(s *mcpserver.MCPServer, anthropicClient *anthropic.Client) {
-	// Phase B agents register tools here.
 	s.AddTool(
 		mcp.NewTool("cert_transparency",
 			mcp.WithDescription("Look up certificate transparency logs for a domain via crt.sh. Returns recently issued certificates including SANs."),
@@ -91,25 +90,25 @@ func registerTools(s *mcpserver.MCPServer, anthropicClient *anthropic.Client) {
 		),
 		urlhausHandler,
 	)
-  s.AddTool(
-    mcp.NewTool("whois_lookup",
+	s.AddTool(
+		mcp.NewTool("whois_lookup",
 			mcp.WithDescription("Query WHOIS registration data for a domain. Registration date is the highest-signal field."),
 			mcp.WithString("domain", mcp.Required(), mcp.Description("Domain to query (e.g. example.com)")),
 		),
 		whoisHandler,
-  )
-  s.AddTool(
-    mcp.NewTool("urlscan_lookup",
+	)
+	s.AddTool(
+		mcp.NewTool("urlscan_lookup",
 			mcp.WithDescription("Search urlscan.io for prior scans of a URL. Returns verdicts, tags, and scan dates."),
 			mcp.WithString("url", mcp.Required(), mcp.Description("URL to search for (e.g. https://example.com/path)")),
 		),
 		urlscanHandler,
-  )
-  s.AddTool(
-    mcp.NewTool("analyze_js",
+	)
+	s.AddTool(
+		mcp.NewTool("analyze_js",
 			mcp.WithDescription("Analyse JavaScript from a phishing page. Identifies kit name, exfiltration URLs, obfuscation, and notable strings."),
 			mcp.WithString("js_content", mcp.Required(), mcp.Description("Raw JavaScript content to analyse")),
 		),
 		makeAnalyzeJSHandler(anthropicClient),
-  )
+	)
 }

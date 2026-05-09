@@ -84,4 +84,11 @@ func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
 		),
 		certTransparencyHandler,
 	)
+	s.AddTool(
+		mcp.NewTool("urlhaus_check",
+			mcp.WithDescription("Check a URL or domain against the URLhaus abuse database. Pass a full URL (https://...) or a bare domain."),
+			mcp.WithString("url_or_domain", mcp.Required(), mcp.Description("Full URL (https://...) or bare domain to check")),
+		),
+		urlhausHandler,
+	)
 }

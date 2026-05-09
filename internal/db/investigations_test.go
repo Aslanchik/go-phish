@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -204,6 +205,61 @@ func TestUpdateHypothesis(t *testing.T) {
 	conn.QueryRowContext(ctx, "SELECT hypothesis->>'brand' FROM investigations WHERE id = $1", inv.ID).Scan(&brand)
 	if brand != "PayPal" {
 		t.Errorf("got brand %q, want %q", brand, "PayPal")
+	}
+}
+
+func TestUpdateSynthesis(t *testing.T) {
+	conn := openTestDB(t)
+	ctx := context.Background()
+
+	inv, err := db.CreateInvestigation(ctx, conn, "https://example.com/phish")
+	if err != nil {
+		t.Fatalf("CreateInvestigation: %v", err)
+	}
+	t.Cleanup(func() {
+		conn.ExecContext(ctx, "DELETE FROM investigations WHERE id = $1", inv.ID)
+	})
+
+	payload := json.RawMessage(`{"verdict":{"value":"phishing","confidence":"high","evidence":"test"}}`)
+	if err := db.UpdateSynthesis(ctx, conn, inv.ID, payload); err != nil {
+		t.Fatalf("UpdateSynthesis: %v", err)
+	}
+
+	got, err := db.GetInvestigation(ctx, conn, inv.ID)
+	if err != nil {
+		t.Fatalf("GetInvestigation: %v", err)
+	}
+	// JSONB normalises key ordering — compare decoded, not raw bytes.
+	var gotMap, wantMap map[string]interface{}
+	json.Unmarshal(got.Synthesis, &gotMap)
+	json.Unmarshal(payload, &wantMap)
+	gotVerdict := gotMap["verdict"].(map[string]interface{})["value"]
+	if gotVerdict != "phishing" {
+		t.Errorf("got verdict %v, want phishing", gotVerdict)
+	}
+	_ = wantMap
+}
+
+func TestUpdateSynthesis_NilIsNULL(t *testing.T) {
+	conn := openTestDB(t)
+	ctx := context.Background()
+
+	inv, err := db.CreateInvestigation(ctx, conn, "https://example.com/phish")
+	if err != nil {
+		t.Fatalf("CreateInvestigation: %v", err)
+	}
+	t.Cleanup(func() {
+		conn.ExecContext(ctx, "DELETE FROM investigations WHERE id = $1", inv.ID)
+	})
+
+	if err := db.UpdateSynthesis(ctx, conn, inv.ID, nil); err != nil {
+		t.Fatalf("UpdateSynthesis(nil): %v", err)
+	}
+
+	var raw []byte
+	conn.QueryRowContext(ctx, "SELECT synthesis FROM investigations WHERE id = $1", inv.ID).Scan(&raw)
+	if raw != nil {
+		t.Errorf("expected NULL synthesis, got %s", raw)
 	}
 }
 

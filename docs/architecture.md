@@ -2,7 +2,7 @@
 
 `go-phish` takes a suspicious URL and produces a structured phishing investigation report: brand impersonated, kit mechanics, credential exfiltration destination, and a verdict with per-claim confidence scores.
 
-The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. Phases 1–3 are built; Phase 4 is specced and ready for implementation.
+The pipeline has four phases. Each phase writes its output to Postgres before the next one starts, so a failure mid-run leaves a full audit trail and every investigation is replayable. All four phases are built.
 
 ## Pipeline
 
@@ -25,7 +25,7 @@ flowchart TD
         MCPServer["MCP Tool Server\ninternal/tools\nwhois · crt.sh · urlscan · urlhaus · analyze_js"]
     end
 
-    subgraph P4["Phase 4 — Synthesis  ·  specced"]
+    subgraph P4["Phase 4 — Synthesis"]
         Synthesis["Claude Sonnet\ntool_use: record_synthesis\nper-claim confidence"]
     end
 
@@ -68,7 +68,7 @@ An agentic loop (`internal/agent`) gives the model access to an in-process MCP t
 
 Tools: `whois_lookup`, `cert_transparency`, `urlscan_lookup`, `urlhaus_check`, `analyze_js`. The MCP server uses an in-process transport — no network socket, same binary.
 
-### Phase 4 — Synthesis *(specced)*
+### Phase 4 — Synthesis
 
 A single LLM call receives the Phase 2 hypothesis, the full Phase 3 enrichment trace, and a Phase 1 artifact summary (final URL, form actions, JS file count — no raw DOM or screenshot). The model is forced to call `record_synthesis`, which returns five independently assessed claims: `brand_impersonated`, `kit_identification`, `exfil_target`, `infrastructure_notes`, and `verdict`. Each claim carries a `confidence` level (`low | medium | high`) and an `evidence` string that must cite a specific tool output or artifact observation by name. Vague reasoning without a source is rejected by the schema.
 
@@ -113,4 +113,4 @@ graph LR
 | 1 | Containerised fetch with egress restriction | ✅ Built |
 | 2 | LLM hypothesis via `record_hypothesis` tool | ✅ Built |
 | 3 | Enrichment agent loop (MCP tool server) | ✅ Built |
-| 4 | Synthesis with per-claim confidence | 📋 Specced |
+| 4 | Synthesis with per-claim confidence | ✅ Built |

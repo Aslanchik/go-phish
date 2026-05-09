@@ -7,6 +7,7 @@ const (
 	StatusFetching      Status = "fetching"
 	StatusHypothesizing Status = "hypothesizing"
 	StatusEnriching     Status = "enriching"
+	StatusSynthesizing  Status = "synthesizing"
 	StatusComplete      Status = "complete"
 	StatusFailed        Status = "failed"
 )

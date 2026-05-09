@@ -28,6 +28,7 @@ type Investigation struct {
 	Report            sql.NullString
 	EnrichmentTrace   json.RawMessage
 	EnrichmentSummary sql.NullString
+	Synthesis         json.RawMessage
 }
 
 func CreateInvestigation(ctx context.Context, conn *sql.DB, url string) (Investigation, error) {
@@ -103,23 +104,28 @@ func UpdateHypothesis(ctx context.Context, conn *sql.DB, id string, h hypothesis
 
 func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigation, error) {
 	var inv Investigation
-	var enrichmentTrace []byte
+	var networkLog, jsFiles, forms, hypothesis, enrichmentTrace, synthesis []byte
 	err := conn.QueryRowContext(ctx, `
 		SELECT id, url, created_at, status, error_message,
 		       final_url, rendered_dom, screenshot,
 		       network_log, js_files, forms, hypothesis, report,
-		       enrichment_trace, enrichment_summary
+		       enrichment_trace, enrichment_summary, synthesis
 		FROM investigations WHERE id = $1
 	`, id).Scan(
 		&inv.ID, &inv.URL, &inv.CreatedAt, &inv.Status, &inv.ErrorMessage,
 		&inv.FinalURL, &inv.RenderedDOM, &inv.Screenshot,
-		&inv.NetworkLog, &inv.JSFiles, &inv.Forms, &inv.Hypothesis, &inv.Report,
-		&enrichmentTrace, &inv.EnrichmentSummary,
+		&networkLog, &jsFiles, &forms, &hypothesis, &inv.Report,
+		&enrichmentTrace, &inv.EnrichmentSummary, &synthesis,
 	)
 	if err != nil {
 		return Investigation{}, fmt.Errorf("get investigation: %w", err)
 	}
+	inv.NetworkLog = json.RawMessage(networkLog)
+	inv.JSFiles = json.RawMessage(jsFiles)
+	inv.Forms = json.RawMessage(forms)
+	inv.Hypothesis = json.RawMessage(hypothesis)
 	inv.EnrichmentTrace = json.RawMessage(enrichmentTrace)
+	inv.Synthesis = json.RawMessage(synthesis)
 	return inv, nil
 }
 
@@ -139,6 +145,20 @@ func UpdateReport(ctx context.Context, conn *sql.DB, id, report string) error {
 	`, report, id)
 	if err != nil {
 		return fmt.Errorf("update report: %w", err)
+	}
+	return nil
+}
+
+func UpdateSynthesis(ctx context.Context, conn *sql.DB, id string, result json.RawMessage) error {
+	var v interface{}
+	if len(result) > 0 {
+		v = []byte(result)
+	}
+	_, err := conn.ExecContext(ctx, `
+		UPDATE investigations SET synthesis = $1 WHERE id = $2
+	`, v, id)
+	if err != nil {
+		return fmt.Errorf("update synthesis: %w", err)
 	}
 	return nil
 }

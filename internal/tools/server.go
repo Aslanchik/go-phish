@@ -84,4 +84,11 @@ func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
 		),
 		certTransparencyHandler,
 	)
+	s.AddTool(
+		mcp.NewTool("urlscan_lookup",
+			mcp.WithDescription("Search urlscan.io for prior scans of a URL. Returns verdicts, tags, and scan dates."),
+			mcp.WithString("url", mcp.Required(), mcp.Description("URL to search for (e.g. https://example.com/path)")),
+		),
+		urlscanHandler,
+	)
 }

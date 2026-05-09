@@ -84,4 +84,11 @@ func registerTools(s *mcpserver.MCPServer, _ *anthropic.Client) {
 		),
 		certTransparencyHandler,
 	)
+	s.AddTool(
+		mcp.NewTool("whois_lookup",
+			mcp.WithDescription("Query WHOIS registration data for a domain. Registration date is the highest-signal field."),
+			mcp.WithString("domain", mcp.Required(), mcp.Description("Domain to query (e.g. example.com)")),
+		),
+		whoisHandler,
+	)
 }

@@ -68,6 +68,10 @@ sequenceDiagram
 | Direct TCP to non-target IPs | HTTP CONNECT handler returns 403 for IPs not in the allow set |
 | Container reaching host network | Isolated bridge network; only `host.docker.internal` is reachable |
 
+## Web UI (web-ui feature)
+
+The proxy topology is unchanged by the web UI. `cmd/server` triggers the same `pipeline.Run` function as `cmd/gophish`; the fetcher container lifecycle, egress proxy startup, and IP allowlist logic are identical for both entry points. The HTTP server process runs on the host alongside the proxy — no additional network paths are opened.
+
 ## Linux vs macOS
 
 On macOS/Windows, Docker Desktop runs inside a Linux VM and injects `host.docker.internal` automatically — the container can always reach the host via this hostname.

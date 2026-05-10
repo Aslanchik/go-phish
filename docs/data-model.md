@@ -70,6 +70,10 @@ stateDiagram-v2
 | `synthesis` | 4 | Structured verdict: five claims (`brand_impersonated`, `kit_identification`, `exfil_target`, `infrastructure_notes`, `verdict`), each with `value`, `confidence`, and `evidence` fields |
 | `report` | 4 | Final plain-text report printed to stdout — includes synthesis findings with per-claim confidence levels |
 
+### Web UI (web-ui feature)
+
+No schema changes. The web UI reads from existing columns via `GET /api/v1/investigations` (list) and `GET /api/v1/investigations/:id` (detail + synthesis). The `screenshot` bytea column is served as `image/png` by `GET /api/v1/investigations/:id/screenshot`. All columns predated the web UI.
+
 ### `eval_labels`
 
 Ground-truth labels applied by a human analyst after an investigation completes. Accumulate from the first investigation so the eval harness has data from day one.

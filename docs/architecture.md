@@ -6,9 +6,14 @@ The pipeline has four phases. Each phase writes its output to Postgres before th
 
 ## Pipeline
 
+Two entry points trigger the same four-phase pipeline: the CLI (`cmd/gophish`) and the HTTP server (`cmd/server`). The HTTP server also fans progress events to connected browsers via SSE.
+
 ```mermaid
 flowchart TD
-    Input(["gophish &lt;url&gt;"])
+    CLI(["gophish &lt;url&gt;\ncmd/gophish"])
+    Browser(["Browser\nweb/"])
+    HTTPServer["HTTP Server\ncmd/server · internal/api"]
+    SSEBroker["SSE Broker\ninternal/api/broker"]
 
     subgraph P1["Phase 1 — Fetch"]
         direction TB
@@ -31,10 +36,13 @@ flowchart TD
 
     DB[("PostgreSQL")]
     Target(["Target host"])
-    Report(["stdout"])
+    Report(["stdout / JSON API"])
 
-    Input -->|"create investigation (pending)"| DB
-    Input --> P1
+    CLI -->|"create investigation (pending)"| DB
+    CLI --> P1
+    Browser -->|"POST /api/v1/investigations"| HTTPServer
+    HTTPServer -->|"create + pipeline.Run goroutine"| DB
+    HTTPServer --> P1
     Container <--> Proxy
     Proxy -->|"allowlisted IPs only"| Target
     P1 -->|"DOM · screenshot · network log · JS · forms"| DB
@@ -46,6 +54,8 @@ flowchart TD
     DB --> P4
     P4 -->|"synthesis · report"| DB
     P4 --> Report
+    HTTPServer -->|"progress callback"| SSEBroker
+    SSEBroker -->|"SSE /api/v1/investigations/:id/events"| Browser
 ```
 
 ### Phase 1 — Fetch
@@ -78,9 +88,12 @@ Per-claim confidences are the primary anti-hallucination mechanism: when the mod
 
 ```mermaid
 graph LR
-    cmd["cmd/gophish\nCLI · pipeline wiring"]
+    cmd_cli["cmd/gophish\nCLI entry point"]
+    cmd_server["cmd/server\nHTTP server entry point"]
 
     subgraph internal
+        api["api\nHTTP handlers · SSE broker\nroutes · middleware"]
+        pipeline["pipeline\nphase orchestration\nEvent type"]
         fetcher["fetcher\nDocker orchestrator\negress proxy"]
         hypothesis["hypothesis\nDOM summary · LLM call"]
         db["db\nmigrations · CRUD"]
@@ -90,17 +103,25 @@ graph LR
         synthesis["synthesis\nLLM call · per-claim verdict"]
     end
 
+    subgraph webpkg["web/"]
+        webembed["React SPA\n(embedded dist/)"]
+    end
+
     subgraph docker["docker/fetcher"]
         fetcherbin["Rod binary\nDockerfile"]
     end
 
-    cmd --> fetcher
-    cmd --> hypothesis
-    cmd --> db
-    cmd --> report
-    cmd --> agent
-    cmd --> tools
-    cmd --> synthesis
+    cmd_cli --> pipeline
+    cmd_server --> api
+    api --> pipeline
+    api --> db
+    api --> webembed
+    pipeline --> fetcher
+    pipeline --> hypothesis
+    pipeline --> agent
+    pipeline --> synthesis
+    pipeline --> db
+    pipeline --> report
     agent --> tools
     synthesis --> db
     fetcher --> fetcherbin
@@ -108,9 +129,10 @@ graph LR
 
 ## Status
 
-| Phase | Description | Status |
+| Component | Description | Status |
 |---|---|---|
-| 1 | Containerised fetch with egress restriction | ✅ Built |
-| 2 | LLM hypothesis via `record_hypothesis` tool | ✅ Built |
-| 3 | Enrichment agent loop (MCP tool server) | ✅ Built |
-| 4 | Synthesis with per-claim confidence | ✅ Built |
+| Phase 1 | Containerised fetch with egress restriction | ✅ Built |
+| Phase 2 | LLM hypothesis via `record_hypothesis` tool | ✅ Built |
+| Phase 3 | Enrichment agent loop (MCP tool server) | ✅ Built |
+| Phase 4 | Synthesis with per-claim confidence | ✅ Built |
+| Web UI | React SPA · HTTP API · SSE live progress | ✅ Built |

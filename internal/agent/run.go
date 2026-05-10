@@ -36,11 +36,15 @@ type ToolCall struct {
 // the MCP client, and repeats until Claude responds with no tool calls or the
 // iteration cap is reached. Tool errors are returned to the model as structured
 // results — they do not abort the loop.
+//
+// toolCB is called twice per dispatch: once before (output == nil) and once after
+// (output set). Pass nil to disable.
 func Run(
 	ctx context.Context,
 	inv db.Investigation,
 	anthropicClient *anthropic.Client,
 	mcpClient *mcpclient.Client,
+	toolCB func(toolName string, input, output json.RawMessage),
 ) (trace []ToolCall, summary string, err error) {
 	tools, err := buildToolList(ctx, mcpClient)
 	if err != nil {
@@ -82,7 +86,13 @@ func Run(
 			}
 
 			log.Printf("enrichment: → %s %s", tu.Name, truncate(string(tu.Input), 120))
+			if toolCB != nil {
+				toolCB(tu.Name, json.RawMessage(tu.Input), nil)
+			}
 			output, callErr := dispatchTool(ctx, mcpClient, tu.Name, tu.Input)
+			if toolCB != nil {
+				toolCB(tu.Name, json.RawMessage(tu.Input), output)
+			}
 			tc := ToolCall{
 				Tool:     tu.Name,
 				Input:    json.RawMessage(tu.Input),

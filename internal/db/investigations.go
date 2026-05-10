@@ -102,6 +102,33 @@ func UpdateHypothesis(ctx context.Context, conn *sql.DB, id string, h hypothesis
 	return nil
 }
 
+func ListInvestigations(ctx context.Context, conn *sql.DB) ([]Investigation, error) {
+	rows, err := conn.QueryContext(ctx, `
+		SELECT id, url, created_at, status, synthesis
+		FROM investigations
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list investigations: %w", err)
+	}
+	defer rows.Close()
+
+	var invs []Investigation
+	for rows.Next() {
+		var inv Investigation
+		var synthesis []byte
+		if err := rows.Scan(&inv.ID, &inv.URL, &inv.CreatedAt, &inv.Status, &synthesis); err != nil {
+			return nil, fmt.Errorf("list investigations scan: %w", err)
+		}
+		inv.Synthesis = json.RawMessage(synthesis)
+		invs = append(invs, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list investigations rows: %w", err)
+	}
+	return invs, nil
+}
+
 func GetInvestigation(ctx context.Context, conn *sql.DB, id string) (Investigation, error) {
 	var inv Investigation
 	var networkLog, jsFiles, forms, hypothesis, enrichmentTrace, synthesis []byte

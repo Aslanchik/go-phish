@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ReportView } from '@/components/ReportView'
 import { ProgressStream } from '@/components/ProgressStream'
 
@@ -26,13 +26,8 @@ export function InvestigationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Investigation Report</h1>
-        <Link to="/" className="text-sm text-muted-foreground hover:underline">
-          ← All investigations
-        </Link>
-      </div>
+    <div className="mx-auto max-w-3xl px-8 py-10 flex flex-col gap-6">
+      <h1 className="text-xl font-semibold">Investigation Report</h1>
 
       {terminal === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

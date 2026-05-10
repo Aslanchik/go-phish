@@ -29,7 +29,7 @@ function ClaimBlock({ label, claim }: { label: string; claim: Claim }) {
     <div className="rounded-lg border p-4 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
-        <Badge variant={confidenceVariant(claim.confidence)}>{claim.confidence}</Badge>
+        <Badge variant={confidenceVariant(claim.confidence)} className="uppercase text-[9px] tracking-wider py-0">{claim.confidence}</Badge>
       </div>
       <p className="text-base font-semibold">{claim.value}</p>
       <p className="text-sm text-muted-foreground">{claim.evidence}</p>

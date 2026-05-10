@@ -1,19 +1,30 @@
-# go-phish
+<p align="center">
+  <img src="web/public/logo.png" alt="go-phish logo" width="220" />
+</p>
 
-A CLI tool that takes a suspicious URL and produces a structured phishing investigation report: brand impersonated, targeted action, and confidence-rated verdict.
+<h1 align="center">go-phish</h1>
+
+<p align="center">A phishing investigation tool powered by Claude. Submit a suspicious URL and get a structured, confidence-rated report — brand impersonated, kit mechanics, credential exfiltration target, and infrastructure notes.</p>
+
+---
 
 ## How it works
 
+Investigations run as a four-phase agent pipeline:
+
 1. **Fetch** — loads the URL in a sandboxed headless Chromium container; captures rendered DOM, screenshot, network log, JS files, and forms
-2. **Hypothesize** — sends the screenshot and a DOM summary to Claude; forces a structured `record_hypothesis` tool call
-3. **Store** — writes all artifacts and the hypothesis to Postgres
-4. **Report** — prints the result to stdout
+2. **Hypothesize** — sends the screenshot and DOM summary to Claude; produces a structured initial hypothesis (brand, targeted action, confidence)
+3. **Enrich** — Claude runs an agentic loop over tools: WHOIS, certificate transparency, URLhaus, urlscan.io, and JS analysis; tool calls are streamed live to the UI
+4. **Synthesize** — Claude produces a final report with per-claim confidence levels (brand, kit, exfil target, verdict)
+
+Progress streams to the browser in real time via SSE. Results are stored in Postgres and accessible any time from the investigation list.
 
 Container egress is restricted to the target IP only via an in-process HTTP CONNECT proxy. The browser runs `--cap-drop ALL --read-only --no-new-privileges`.
 
 ## Prerequisites
 
-- Go 1.26+
+- Go 1.22+
+- Node.js 20+ (for the frontend build)
 - Docker (Desktop or Engine)
 - PostgreSQL (or use the included Compose file)
 - An Anthropic API key
@@ -28,73 +39,47 @@ docker compose up -d
 
 **2. Set environment variables**
 
-Copy the example and fill in your API key:
-
 ```sh
 cp .env.example .env
 # edit .env — set ANTHROPIC_API_KEY
 ```
-
-The two required variables:
 
 | Variable | Example |
 |---|---|
 | `DATABASE_URL` | `postgres://gophish:gophish@localhost:5432/gophish?sslmode=disable` |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` |
 
-**3. Build the fetcher Docker image**
+**3. Build the fetcher image**
 
 ```sh
 docker build -t go-phish-fetcher:latest docker/fetcher/
 ```
 
-**4. Build the CLI**
+**4. Build the frontend**
 
 ```sh
-go build -o gophish ./cmd/gophish
+cd web && npm install && npm run build && cd ..
 ```
+
+**5. Start the server**
+
+```sh
+go run ./cmd/server
+```
+
+Open [http://localhost:8080](http://localhost:8080).
 
 ## Usage
 
-```sh
-export $(cat .env | xargs)
+Paste any `http://` or `https://` URL into the form and click **Investigate**. The pipeline runs in the background; tool calls and phase transitions stream live in the progress panel. When the investigation completes, the full report is shown — including per-claim confidence levels for brand identification, kit fingerprint, exfiltration target, and verdict.
 
-./gophish <url>
-```
-
-Example:
-
-```
-$ ./gophish https://suspicious-login.example.com
-
-=== Phishing Investigation Report ===
-
-Investigation ID:    3f2a1b4c-...
-Timestamp:           2026-05-04T12:00:00Z
-URL:                 https://suspicious-login.example.com
-Final URL:           https://suspicious-login.example.com/login
-
---- Hypothesis ---
-
-Brand:               PayPal
-Targeted action:     credential_theft
-Confidence:          high
-Reasoning:           Login form posts credentials to an unrelated domain; visual design closely matches PayPal's sign-in page.
-```
-
-Exit code is 0 on success, 1 on any failure. Errors print to stderr.
-
-```sh
-./gophish              # exit 1: prints usage
-./gophish not-a-url    # exit 1: URL must start with http:// or https://
-./gophish --help       # prints usage
-```
+Past investigations are listed on the home page and can be reopened at any time.
 
 ## Database
 
-Migrations run automatically at startup. Investigations are stored in the `investigations` table; ground-truth labels go in `eval_labels`.
+Migrations run automatically at server startup. The main tables are `investigations` (all pipeline artifacts and results) and `eval_labels` (ground-truth labels for future eval harness work).
 
-To reset a stuck investigation (e.g. after a killed process):
+To reset a stuck investigation after a killed process:
 
 ```sql
 UPDATE investigations
@@ -105,11 +90,17 @@ WHERE status NOT IN ('complete', 'failed');
 ## Project layout
 
 ```
-cmd/gophish/          CLI entry point and pipeline wiring
+cmd/server/           HTTP server entry point
+internal/api/         REST handlers, SSE broker, routing
+internal/pipeline/    four-phase pipeline orchestrator
 internal/fetcher/     container orchestrator and egress proxy
-internal/hypothesis/  DOM summary extraction and LLM call
+internal/hypothesis/  Phase 2 — DOM summary and hypothesis generation
+internal/agent/       Phase 3 — enrichment agent loop
+internal/tools/       MCP tool server (whois, crt.sh, urlscan, urlhaus, JS analysis)
+internal/synthesis/   Phase 4 — final report synthesis
 internal/db/          Postgres connection, migrations, CRUD
 internal/report/      report formatter
+web/                  React + Tailwind frontend
 docker/fetcher/       standalone Rod/Chromium fetcher binary and Dockerfile
 specs/                requirements, design, and task tracking
 ```

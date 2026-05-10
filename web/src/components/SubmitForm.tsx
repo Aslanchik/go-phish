@@ -54,34 +54,34 @@ export function SubmitForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
       <label htmlFor="url-input" className="sr-only">
         Suspicious URL
       </label>
-      <div className="flex gap-2">
-        <Input
-          id="url-input"
-          type="url"
-          placeholder="https://suspicious-site.example.com"
-          value={url}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            setUrl(e.target.value)
-            if (error) setError(null)
-          }}
-          disabled={loading}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'url-error' : undefined}
-          className="flex-1"
-        />
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Investigating…' : 'Investigate'}
-        </Button>
-      </div>
+      <Input
+        id="url-input"
+        type="url"
+        placeholder="https://suspicious-site.example.com"
+        value={url}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+          setUrl(e.target.value)
+          if (error) setError(null)
+        }}
+        disabled={loading}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? 'url-error' : undefined}
+        className="h-10 font-mono text-sm"
+      />
       {error && (
         <p id="url-error" className="text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
+      <div className="flex justify-end">
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Investigating…' : 'Investigate'}
+        </Button>
+      </div>
     </form>
   )
 }

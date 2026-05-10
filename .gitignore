@@ -16,6 +16,8 @@ vendor/
 
 # Build cache
 dist/
+web/dist/
+web/node_modules/
 
 # macOS
 .DS_Store

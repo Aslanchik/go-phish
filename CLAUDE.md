@@ -57,6 +57,7 @@ Final report: brand impersonated, kit identification, exfiltration target, infra
 - **Headless browser:** Rod (`github.com/go-rod/rod`) or chromedp — decide in `design.md`
 - **Database:** PostgreSQL
 - **Migrations:** golang-migrate or goose — decide in first `design.md`
+- **Web UI:** React + Tailwind CSS + shadcn/ui. Go HTTP server serves the API; frontend is a separate `web/` directory.
 
 Ask before adding dependencies.
 
@@ -102,4 +103,4 @@ When `design.md` covers one of these, explicitly list alternatives considered an
 
 ## Out of scope for v1
 
-Web UI, batch processing, continuous monitoring, form submission tracing, residential proxy/geo-spoofing, cloud deployment.
+Batch processing, continuous monitoring, form submission tracing, residential proxy/geo-spoofing, cloud deployment.

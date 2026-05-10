@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Investigation } from '@/types'
 
 const SIDEBAR_W = 272
-const RAIL_W = 68
+const RAIL_W = 79
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
@@ -132,21 +132,14 @@ export function Layout() {
       >
         <div className="flex flex-col" style={{ width: SIDEBAR_W, height: '100%' }}>
           {/* Header */}
-          <div className="h-[78px] border-b border-border flex items-center shrink-0">
+          <div className="h-[78px] border-b border-border flex items-center justify-between shrink-0">
             <Link
               to="/"
               className="w-[78px] h-full shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-100"
               aria-label="go-phish home"
             >
-              <img src="/logo-icon.png" alt="go-phish" className="w-[64px] h-[66px] select-none" draggable={false} />
+              <img src="/logo.png" alt="go-phish" className="w-[64px] h-[66px] select-none" draggable={false} />
             </Link>
-            <span
-              className="flex-1 min-w-0 text-lg font-bold tracking-tight text-foreground pl-1 select-none"
-              style={{ opacity: expanded ? 1 : 0, transition: expanded ? fadeIn : fadeOut }}
-              aria-hidden="true"
-            >
-              go-phish
-            </span>
             <button
               onClick={() => setPinned((p) => !p)}
               className={cn(

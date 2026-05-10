@@ -32,6 +32,7 @@ function formatDate(iso: string) {
 
 export function InvestigationList() {
   const [investigations, setInvestigations] = useState<Investigation[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,17 +41,23 @@ export function InvestigationList() {
         if (!res.ok) throw new Error(`${res.status}`)
         return res.json()
       })
-      .then((data: Investigation[]) => setInvestigations(data))
-      .catch(() => setError('Failed to load investigations'))
+      .then((data: Investigation[]) => {
+        setInvestigations(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Failed to load investigations')
+        setLoading(false)
+      })
   }, [])
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>
 
   if (error) return <p className="text-sm text-destructive">{error}</p>
 
   if (investigations.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No investigations yet. Submit a URL above to get started.
-      </p>
+      <p className="text-sm text-muted-foreground">No investigations yet.</p>
     )
   }
 
@@ -59,16 +66,13 @@ export function InvestigationList() {
       <TableHeader>
         <TableRow>
           <TableHead>URL</TableHead>
-          <TableHead>Status / Verdict</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Started</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {investigations.map((inv) => (
-          <TableRow
-            key={inv.id}
-            className={inv.status === 'failed' ? 'opacity-60' : ''}
-          >
+          <TableRow key={inv.id}>
             <TableCell className="max-w-sm truncate font-mono text-xs">
               <Link
                 to={`/investigations/${inv.id}`}

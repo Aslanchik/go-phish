@@ -18,6 +18,7 @@ vendor/
 dist/
 web/dist/
 web/node_modules/
+web/.vite/
 
 # macOS
 .DS_Store

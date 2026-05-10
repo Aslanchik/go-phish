@@ -47,28 +47,41 @@ export function SubmitForm() {
       const data = await res.json()
       navigate(`/investigations/${data.id}`)
     } catch {
-      setError('Network error — is the server running?')
+      setError('Network error: is the server running?')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2">
+      <label htmlFor="url-input" className="sr-only">
+        Suspicious URL
+      </label>
       <div className="flex gap-2">
         <Input
-          type="text"
+          id="url-input"
+          type="url"
           placeholder="https://suspicious-site.example.com"
           value={url}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setUrl(e.target.value)
+            if (error) setError(null)
+          }}
           disabled={loading}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? 'url-error' : undefined}
           className="flex-1"
         />
         <Button type="submit" disabled={loading}>
-          {loading ? 'Submitting…' : 'Investigate'}
+          {loading ? 'Investigating…' : 'Investigate'}
         </Button>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p id="url-error" className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
     </form>
   )
 }

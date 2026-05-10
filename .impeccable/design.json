@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-10T00:00:00Z",
+  "title": "Design System: go-phish",
+  "extensions": {
+    "colorMeta": {
+      "signal-threat": {
+        "role": "primary",
+        "displayName": "Alert Vermilion",
+        "canonical": "oklch(0.577 0.245 27)",
+        "tonalRamp": [
+          "oklch(0.18 0.08 27)",
+          "oklch(0.26 0.13 27)",
+          "oklch(0.35 0.18 27)",
+          "oklch(0.46 0.22 27)",
+          "oklch(0.577 0.245 27)",
+          "oklch(0.67 0.21 27)",
+          "oklch(0.79 0.15 27)",
+          "oklch(0.93 0.06 27)"
+        ]
+      },
+      "signal-nominal": {
+        "role": "primary",
+        "displayName": "Clear Green",
+        "canonical": "oklch(0.627 0.194 149)",
+        "tonalRamp": [
+          "oklch(0.18 0.06 149)",
+          "oklch(0.28 0.10 149)",
+          "oklch(0.38 0.15 149)",
+          "oklch(0.49 0.18 149)",
+          "oklch(0.627 0.194 149)",
+          "oklch(0.72 0.17 149)",
+          "oklch(0.82 0.11 149)",
+          "oklch(0.93 0.05 149)"
+        ]
+      },
+      "signal-outbound": {
+        "role": "primary",
+        "displayName": "Dispatch Blue",
+        "canonical": "oklch(0.623 0.214 260)",
+        "tonalRamp": [
+          "oklch(0.18 0.07 260)",
+          "oklch(0.28 0.12 260)",
+          "oklch(0.38 0.17 260)",
+          "oklch(0.49 0.20 260)",
+          "oklch(0.623 0.214 260)",
+          "oklch(0.71 0.18 260)",
+          "oklch(0.82 0.12 260)",
+          "oklch(0.93 0.05 260)"
+        ]
+      },
+      "signal-caution": {
+        "role": "primary",
+        "displayName": "Standby Amber",
+        "canonical": "oklch(0.769 0.188 70)",
+        "tonalRamp": [
+          "oklch(0.18 0.06 70)",
+          "oklch(0.30 0.11 70)",
+          "oklch(0.43 0.16 70)",
+          "oklch(0.57 0.19 70)",
+          "oklch(0.68 0.19 70)",
+          "oklch(0.769 0.188 70)",
+          "oklch(0.86 0.13 70)",
+          "oklch(0.94 0.06 70)"
+        ]
+      },
+      "ink-deep": {
+        "role": "neutral",
+        "displayName": "Ink Deep",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.08 0 0)",
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.27 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.79 0 0)"
+        ]
+      },
+      "ink-ui": {
+        "role": "neutral",
+        "displayName": "Ink UI",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.08 0 0)",
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.27 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.79 0 0)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "oklch(0.20 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.40 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.91 0 0)"
+        ]
+      },
+      "surface-base": {
+        "role": "neutral",
+        "displayName": "Document White",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.60 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.91 0 0)",
+          "oklch(0.95 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Fog Surface",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": [
+          "oklch(0.60 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.91 0 0)",
+          "oklch(0.95 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "border-quiet": {
+        "role": "neutral",
+        "displayName": "Ruled Line",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "oklch(0.50 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.96 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "focus-ring": {
+        "role": "neutral",
+        "displayName": "Focus Ring",
+        "canonical": "oklch(0.708 0 0)",
+        "tonalRamp": [
+          "oklch(0.30 0 0)",
+          "oklch(0.40 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.80 0 0)",
+          "oklch(0.89 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page titles. One per view." },
+      "title": { "displayName": "Title", "purpose": "Section headings within a view." },
+      "body": { "displayName": "Body", "purpose": "Evidence text, prose, general descriptions." },
+      "label": { "displayName": "Label", "purpose": "Field labels, badge text, metadata keys, timestamps." },
+      "mono": { "displayName": "Mono", "purpose": "Machine-produced data: IDs, URLs, tool call arguments, artifact content." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-state", "value": "0.15s ease", "purpose": "State transitions on buttons and inputs (color/opacity changes)." },
+      { "name": "ease-scroll", "value": "behavior: smooth", "purpose": "Live stream auto-scroll to bottom. Disabled when prefers-reduced-motion: reduce." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px", "purpose": "Two-column layout threshold." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call-to-action. Used for URL submission.",
+      "html": "<button class=\"ds-btn-primary\">Investigate</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; background: oklch(0.205 0 0); color: oklch(1 0 0); font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 500; border-radius: 10px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; user-select: none; transition: background 0.15s ease; } .ds-btn-primary:hover { background: oklch(0.205 0 0 / 0.8); } .ds-btn-primary:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action. Used for navigation and non-destructive actions.",
+      "html": "<button class=\"ds-btn-outline\">← All investigations</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; background: transparent; color: oklch(0.145 0 0); font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 500; border-radius: 10px; border: 1px solid oklch(0.922 0 0); cursor: pointer; white-space: nowrap; user-select: none; transition: background 0.15s ease; } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-btn-outline:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Confidence Badge — High",
+      "kind": "chip",
+      "refersTo": "badge-high",
+      "description": "High-confidence claim label. Ink UI fill, pill shape.",
+      "html": "<span class=\"ds-badge-high\">high</span>",
+      "css": ".ds-badge-high { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: oklch(0.205 0 0); color: oklch(1 0 0); font-family: 'Geist Variable', sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; letter-spacing: 0.02em; white-space: nowrap; }"
+    },
+    {
+      "name": "Confidence Badge — Medium",
+      "kind": "chip",
+      "refersTo": "badge-medium",
+      "description": "Medium-confidence claim label. Fog Surface fill.",
+      "html": "<span class=\"ds-badge-medium\">medium</span>",
+      "css": ".ds-badge-medium { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: oklch(0.97 0 0); color: oklch(0.145 0 0); font-family: 'Geist Variable', sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; letter-spacing: 0.02em; white-space: nowrap; }"
+    },
+    {
+      "name": "Confidence Badge — Low",
+      "kind": "chip",
+      "refersTo": "badge-low",
+      "description": "Low-confidence claim label. Alert Vermilion tint. The only badge that uses a signal color.",
+      "html": "<span class=\"ds-badge-low\">low</span>",
+      "css": ".ds-badge-low { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: oklch(0.577 0.245 27 / 0.1); color: oklch(0.577 0.245 27); font-family: 'Geist Variable', sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; letter-spacing: 0.02em; white-space: nowrap; }"
+    },
+    {
+      "name": "Claim Block",
+      "kind": "card",
+      "refersTo": null,
+      "description": "Signature report component. One per synthesis claim: label + confidence badge, value, evidence.",
+      "html": "<div class=\"ds-claim-block\"><div class=\"ds-claim-header\"><span class=\"ds-claim-label\">Brand Impersonated</span><span class=\"ds-badge-high\">high</span></div><p class=\"ds-claim-value\">PayPal</p><p class=\"ds-claim-evidence\">Visual design matches PayPal sign-in page. Form posts credentials to unrelated domain.</p></div>",
+      "css": ".ds-claim-block { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid oklch(0.922 0 0); border-radius: 10px; background: transparent; } .ds-claim-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .ds-claim-label { font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.556 0 0); } .ds-claim-value { font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 600; color: oklch(0.145 0 0); margin: 0; } .ds-claim-evidence { font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.556 0 0); margin: 0; } .ds-badge-high { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: oklch(0.205 0 0); color: oklch(1 0 0); font-family: 'Geist Variable', sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0; }"
+    },
+    {
+      "name": "URL Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Primary submission field. Transparent fill, ruled border, focus ring on interaction.",
+      "html": "<input class=\"ds-input\" type=\"url\" placeholder=\"https://suspicious-login.example.com\" />",
+      "css": ".ds-input { display: block; width: 100%; height: 32px; padding: 4px 10px; background: transparent; border: 1px solid oklch(0.922 0 0); border-radius: 10px; font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.145 0 0); outline: none; transition: border-color 0.15s ease; box-sizing: border-box; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus { border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-input[aria-invalid=\"true\"] { border-color: oklch(0.577 0.245 27); box-shadow: 0 0 0 3px oklch(0.577 0.245 27 / 0.2); } .ds-input:disabled { opacity: 0.5; pointer-events: none; background: oklch(0.922 0 0 / 0.5); }"
+    },
+    {
+      "name": "Live Stream Panel",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature real-time log. Header bar + scrolling mono rows. Signal colors appear here for direction and outcome.",
+      "html": "<div class=\"ds-stream\"><div class=\"ds-stream-header\"><span class=\"ds-stream-title\">Live progress</span></div><div class=\"ds-stream-body\"><div class=\"ds-stream-row\"><span class=\"ds-stream-time\">12:04:02</span><span class=\"ds-stream-phase\">HYPOTHESIZING</span></div><div class=\"ds-stream-row\"><span class=\"ds-stream-time\">12:04:08</span><span class=\"ds-stream-mono\"><span class=\"ds-arrow-out\">→</span> whois_lookup {\"domain\":\"evil.ru\"}</span></div><div class=\"ds-stream-row\"><span class=\"ds-stream-time\">12:04:09</span><span class=\"ds-stream-mono\"><span class=\"ds-arrow-in\">←</span> whois_lookup reg: 2026-04-01, age: 39d <span class=\"ds-stream-elapsed\">1.2s</span></span></div><div class=\"ds-stream-row\"><span class=\"ds-stream-time\">12:04:21</span><span class=\"ds-stream-complete\">✓ Complete — verdict: confirmed phishing kit</span></div></div></div>",
+      "css": ".ds-stream { border-radius: 10px; border: 1px solid oklch(0.922 0 0); background: oklch(0.97 0 0 / 0.3); display: flex; flex-direction: column; } .ds-stream-header { padding: 8px 16px; border-bottom: 1px solid oklch(0.922 0 0); display: flex; align-items: center; justify-content: space-between; } .ds-stream-title { font-family: 'Geist Variable', sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.556 0 0); text-transform: uppercase; letter-spacing: 0.05em; } .ds-stream-body { padding: 12px 16px; display: flex; flex-direction: column; } .ds-stream-row { display: flex; align-items: flex-start; gap: 12px; padding: 2px 0; } .ds-stream-time { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.75rem; color: oklch(0.556 0 0); width: 64px; flex-shrink: 0; } .ds-stream-phase { font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 700; color: oklch(0.145 0 0); letter-spacing: 0.05em; } .ds-stream-mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.75rem; color: oklch(0.145 0 0); } .ds-stream-elapsed { color: oklch(0.708 0 0); margin-left: 8px; } .ds-arrow-out { color: oklch(0.623 0.214 260); } .ds-arrow-in { color: oklch(0.627 0.194 149); } .ds-stream-complete { font-family: 'Geist Variable', sans-serif; font-size: 0.875rem; font-weight: 600; color: oklch(0.627 0.194 149); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Intelligence Brief",
+    "overview": "The design language of go-phish is the intelligence brief: a document that conveys authority through density and structure, not through visual polish. Every surface is a flat page. Presence comes from the weight of the information on it, not from the interface's self-decoration.\n\nThe system is almost entirely achromatic. Geist Variable carries the hierarchy through weight and scale contrast. Color appears only when it means something: threat signals are vermilion, safe signals are green, outbound tool calls are blue, caution states are amber. The four signals form a directional vocabulary — if you see color, the system is telling you something.\n\nThis rejects three named failure modes: the SaaS dashboard aesthetic, the security-tool cliché (green-on-black terminal cosplay, red-alert banners on every state), and the clinical blank. The Intelligence Brief has presence because a serious document has presence.",
+    "keyCharacteristics": [
+      "Achromatic by default; color is always signal, never decoration",
+      "Hierarchy through type weight and scale, not cards or chrome",
+      "Flat surfaces — borders and tonal contrast convey depth, no shadows",
+      "Monospace for machine-produced data only",
+      "WCAG AA throughout"
+    ],
+    "rules": [
+      { "name": "The Four Signals Rule", "body": "The only chromatic colors are Alert Vermilion, Clear Green, Dispatch Blue, and Standby Amber. These are reserved for threat/failure, nominal/complete, outbound direction, and caution states respectively. A new state that doesn't fit one of these four is expressed through typography, not a fifth color.", "section": "colors" },
+      { "name": "The No Tint Rule", "body": "Neutral surfaces are pure achromatic OKLCH (chroma = 0). No hue-tinted backgrounds, branded fills, or gradient overlays on containers. The page is a document. Documents don't glow.", "section": "colors" },
+      { "name": "The Mono Discipline Rule", "body": "Monospace is reserved for machine-produced data: investigation IDs, raw URLs, tool call inputs/outputs, artifact content. Never on prose labels, navigation, or headings.", "section": "typography" },
+      { "name": "The One Headline Rule", "body": "Every view has exactly one Headline (600/1.5rem). If content needs emphasis, use Body Strong or Title — never a custom intermediate size.", "section": "typography" },
+      { "name": "The Flat Document Rule", "body": "No box-shadow on any resting surface. Use border-border or bg-muted fills for distinction. The system is a document, not a 3D stage.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reserve the four signal colors for their exact assigned roles.",
+      "Do show evidence text by default on every claim block — never hidden behind a toggle at rest.",
+      "Do use monospace exclusively for machine-produced data.",
+      "Do keep all surfaces flat; use tonal contrast and borders for depth.",
+      "Do conform to WCAG AA: 4.5:1 for text, 3:1 for UI components.",
+      "Do respect prefers-reduced-motion for live stream animations."
+    ],
+    "donts": [
+      "Don't use SaaS dashboard patterns: gradient cards, hero metrics, identical icon-heading-text grids.",
+      "Don't use security-tool clichés: green-on-black terminal, red-alert banners on non-failure states.",
+      "Don't produce a clinical blank form — presence comes from typography and spacing.",
+      "Don't add a sixth signal color.",
+      "Don't add box-shadow to resting surfaces.",
+      "Don't use gradient text, glassmorphism, or side-stripe borders (border-left > 1px as accent).",
+      "Don't add dark mode — explicitly out of scope for v1.",
+      "Don't use border-left > 1px as a colored accent stripe on any component."
+    ]
+  }
+}

@@ -235,7 +235,7 @@ Use the available tools to investigate this page further. Focus on:
 3. Prior scans and verdicts (urlscan_lookup, urlhaus_check)
 4. JavaScript analysis (analyze_js) — look for exfiltration URLs and kit fingerprints
 
-When you have gathered sufficient evidence, respond with a summary of your findings.`,
+When you have gathered sufficient evidence, respond with a plain prose summary of your findings. No markdown headings, bullets, or formatting — write in complete sentences as you would in an incident report.`,
 		h.Brand, h.TargetedAction, h.Confidence, h.Reasoning,
 		inv.FinalURL.String,
 		formActions,

@@ -21,25 +21,54 @@ Container egress is restricted to the target IP only via an in-process HTTP CONN
 
 ## Prerequisites
 
-- Go 1.22+
-- Node.js 20+ (for the frontend build)
 - Docker (Desktop or Engine)
-- PostgreSQL (or use the included Compose file)
 - An Anthropic API key
 
 ## Setup
 
-**1. Start Postgres**
+### Docker — recommended
+
+Builds the React frontend, Go server, and fetcher image; Postgres runs as a container. No local Go or Node install needed.
+
+**1. Set your API key**
+
+```sh
+cp .env.example .env
+# edit .env — set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**2. Build images**
+
+```sh
+docker compose build server   # multi-stage: React build → Go binary
+docker compose build fetcher  # sandboxed Chromium fetcher (build once, reuse)
+```
+
+**3. Start everything**
 
 ```sh
 docker compose up -d
+```
+
+Open [http://localhost:8080](http://localhost:8080).
+
+---
+
+### Local development
+
+Requires Go 1.22+, Node.js 20+, Docker, and a running Postgres instance.
+
+**1. Start Postgres**
+
+```sh
+docker compose up -d postgres
 ```
 
 **2. Set environment variables**
 
 ```sh
 cp .env.example .env
-# edit .env — set ANTHROPIC_API_KEY
+# edit .env — set ANTHROPIC_API_KEY and DATABASE_URL
 ```
 
 | Variable | Example |

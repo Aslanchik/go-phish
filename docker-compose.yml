@@ -16,5 +16,40 @@ services:
       timeout: 5s
       retries: 10
 
+  server:
+    build: .
+    image: go-phish-server:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://gophish:gophish@postgres:5432/gophish?sslmode=disable
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Tell the server to reach the egress proxy via Docker DNS (this service's name)
+      # and to attach fetcher containers to the shared network below.
+      PROXY_HOST: server
+      FETCHER_NETWORK: gophish-net
+    volumes:
+      # Mount host Docker socket so the server can spawn fetcher containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+      - gophish-net
+
+  # Build-only target — not started by `docker compose up`.
+  # Run `docker compose build fetcher` once before using the investigation pipeline.
+  fetcher:
+    build: ./docker/fetcher
+    image: go-phish-fetcher:latest
+    profiles: ["build"]
+
 volumes:
   postgres_data:
+
+networks:
+  gophish-net:
+    name: gophish-net
+    driver: bridge

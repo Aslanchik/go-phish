@@ -9,7 +9,7 @@ export interface Investigation {
 export interface Claim {
   value: string
   confidence: 'low' | 'medium' | 'high'
-  evidence: string
+  evidence: string[]
 }
 
 export interface Synthesis {
@@ -20,13 +20,20 @@ export interface Synthesis {
   verdict: Claim
 }
 
+export interface Hypothesis {
+  brand: string
+  targeted_action: string
+  confidence: string
+  reasoning: string
+}
+
 export interface InvestigationDetail {
   id: string
   url: string
   created_at: string
   status: 'pending' | 'running' | 'complete' | 'failed'
   error_message?: string
-  hypothesis?: Record<string, unknown>
+  hypothesis?: Hypothesis
   enrichment_summary?: string
   synthesis?: Synthesis
 }

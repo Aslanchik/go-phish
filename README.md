@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="web/public/logo.png" alt="go-phish logo" width="220" />
+  <img src="web/public/logo-full.png" alt="go-phish" width="320" />
 </p>
-
-<h1 align="center">go-phish</h1>
 
 <p align="center">A phishing investigation tool powered by Claude. Submit a suspicious URL and get a structured, confidence-rated report — brand impersonated, kit mechanics, credential exfiltration target, and infrastructure notes.</p>
 

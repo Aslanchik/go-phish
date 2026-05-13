@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -15,11 +16,25 @@ import (
 const (
 	fetcherImage    = "go-phish-fetcher:latest"
 	fetchTimeoutSec = "30"
-	// proxyHost is the hostname containers use to reach the host machine.
-	// On macOS/Windows, Docker Desktop injects this automatically.
-	// On Linux, we pass --add-host=host.docker.internal:host-gateway to docker run.
-	proxyHost = "host.docker.internal"
 )
+
+// proxyHost is the hostname fetcher containers use to reach the egress proxy.
+// Defaults to host.docker.internal (works for local dev where the server runs on the host).
+// Set PROXY_HOST=<service-name> when the server itself runs in a container — the fetcher
+// will reach the proxy via Docker DNS on the shared FETCHER_NETWORK.
+var proxyHost = envOr("PROXY_HOST", "host.docker.internal")
+
+// fetcherNetwork, when set, is a pre-existing Docker network that the server is already
+// attached to. Fetcher containers join it so they can reach the proxy via Docker DNS.
+// When empty, a per-investigation bridge network is created and destroyed as before.
+var fetcherNetwork = os.Getenv("FETCHER_NETWORK")
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
 
 // Run fetches the target URL inside a sandboxed container and returns structured results.
 // Egress is restricted via an in-process HTTP CONNECT proxy that whitelists only the
@@ -35,20 +50,23 @@ func Run(ctx context.Context, targetURL string) (FetchResult, error) {
 		return FetchResult{}, fmt.Errorf("resolve %s: %w", host, err)
 	}
 
-	networkName := fmt.Sprintf("gophish-%d", time.Now().UnixNano())
-	if err := createNetwork(ctx, networkName); err != nil {
-		return FetchResult{}, fmt.Errorf("create network: %w", err)
-	}
-	defer removeNetwork(networkName)
-
 	proxy, err := startProxy(ips)
 	if err != nil {
 		return FetchResult{}, fmt.Errorf("start proxy: %w", err)
 	}
 	defer proxy.stop()
 
+	network := fetcherNetwork
+	if network == "" {
+		network = fmt.Sprintf("gophish-%d", time.Now().UnixNano())
+		if err := createNetwork(ctx, network); err != nil {
+			return FetchResult{}, fmt.Errorf("create network: %w", err)
+		}
+		defer removeNetwork(network)
+	}
+
 	proxyURL := fmt.Sprintf("http://%s:%d", proxyHost, proxy.port())
-	return runContainer(ctx, targetURL, networkName, proxyURL)
+	return runContainer(ctx, targetURL, network, proxyURL)
 }
 
 func extractHost(rawURL string) (string, error) {
@@ -88,9 +106,11 @@ func runContainer(ctx context.Context, targetURL, networkName, proxyURL string) 
 		"--env", "HTTP_PROXY=" + proxyURL,
 		"--env", "HTTPS_PROXY=" + proxyURL,
 	}
-	// On Linux, Docker does not inject host.docker.internal automatically;
-	// --add-host maps it to the host gateway so the container can reach the proxy.
-	if runtime.GOOS == "linux" {
+	// When using a shared named network (FETCHER_NETWORK), the proxy is reachable via
+	// Docker DNS (PROXY_HOST = service name) — no host mapping needed.
+	// Otherwise on Linux, inject host.docker.internal so the container can reach the
+	// host-side proxy via the Docker gateway.
+	if fetcherNetwork == "" && runtime.GOOS == "linux" {
 		args = append(args, "--add-host=host.docker.internal:host-gateway")
 	}
 	args = append(args, fetcherImage)

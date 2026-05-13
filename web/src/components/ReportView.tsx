@@ -5,7 +5,11 @@ import type { Claim, Hypothesis, InvestigationDetail, Synthesis } from '@/types'
 
 function evidenceItems(evidence: string[] | string | null | undefined): string[] {
   if (!evidence) return []
-  return Array.isArray(evidence) ? evidence : [evidence]
+  const items = Array.isArray(evidence) ? evidence : [evidence]
+  return items.map((s) => {
+    const stripped = s.replace(/^\w+:\s*/, '')
+    return stripped.charAt(0).toUpperCase() + stripped.slice(1)
+  })
 }
 
 // ---- Verdict signal detection ----
@@ -33,9 +37,6 @@ function verdictSignal(claim: Claim): VerdictSignal {
   if (claim.confidence === 'medium') return 'threat-medium'
   return 'threat-low'
 }
-
-// ---- Hero color tokens ----
-// Border only — background is always transparent.
 
 const HERO_BORDER: Record<VerdictSignal, string> = {
   'threat-high':   '1.5px solid oklch(0.577 0.245 27)',
@@ -65,14 +66,13 @@ function VerdictHero({ claim }: { claim: Claim }) {
         <ConfidencePill confidence={claim.confidence} />
       </div>
       {evidenceItems(claim.evidence).length > 0 && (
-        <ul className="flex flex-col gap-1 mt-0.5">
+        <div className="flex flex-col gap-1.5 mt-0.5">
           {evidenceItems(claim.evidence).map((point, i) => (
-            <li key={i} className="flex gap-2 text-[0.8125rem] leading-relaxed text-muted-foreground">
-              <span className="shrink-0 select-none mt-px">·</span>
-              <span>{point}</span>
-            </li>
+            <p key={i} className="text-[0.8125rem] leading-relaxed text-muted-foreground max-w-[95ch]">
+              {point}
+            </p>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )
@@ -96,13 +96,13 @@ function FailedHero({ error }: { error?: string }) {
         </span>
       </div>
       {error && (
-        <p className="text-sm text-muted-foreground max-w-[65ch]">{error}</p>
+        <p className="text-sm text-muted-foreground max-w-[95ch]">{error}</p>
       )}
     </div>
   )
 }
 
-// ---- Confidence pill (for claim cards) ----
+// ---- Confidence pill ----
 
 function ConfidencePill({ confidence }: { confidence: Claim['confidence'] }) {
   if (confidence === 'high') {
@@ -140,9 +140,60 @@ function safeConfidence(s: string): Claim['confidence'] {
   return 'low'
 }
 
-// ---- Claims accordion ----
+// ---- Screenshot row ----
+// Positioned between verdict and the findings accordion. Same visual language
+// as accordion rows but lives outside the accordion (separate card).
+
+function ScreenshotRow({ id }: { id: string }) {
+  const [open, setOpen] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors duration-100"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <span className="w-[152px] shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Screenshot
+        </span>
+        <span className="flex-1 min-w-0 text-sm text-muted-foreground">
+          Page capture at time of investigation
+        </span>
+        <ChevronDown
+          className={cn(
+            'w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-border p-4 bg-muted/20">
+          {failed ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Screenshot unavailable</p>
+          ) : (
+            <img
+              src={`/api/v1/investigations/${id}/screenshot`}
+              alt="Page screenshot"
+              className="w-full rounded object-contain max-h-[36rem]"
+              onError={() => setFailed(true)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---- Unified investigation accordion ----
+// Primary claims occupy the top section. Hypothesis and enrichment notes live
+// below a "Supporting context" divider — same row anatomy, lower visual weight.
 
 type ClaimKey = 'brand_impersonated' | 'kit_identification' | 'exfil_target' | 'infrastructure_notes'
+type SuppKey = 'hypothesis' | 'enrichment'
+type AnyKey = ClaimKey | SuppKey
 
 const CLAIM_ORDER: { key: ClaimKey; label: string }[] = [
   { key: 'brand_impersonated', label: 'Brand Impersonated' },
@@ -151,10 +202,24 @@ const CLAIM_ORDER: { key: ClaimKey; label: string }[] = [
   { key: 'infrastructure_notes', label: 'Infrastructure Notes' },
 ]
 
-function ClaimsAccordion({ synthesis }: { synthesis: Synthesis }) {
-  const [open, setOpen] = useState<Set<ClaimKey>>(new Set(['brand_impersonated']))
+interface InvestigationAccordionProps {
+  synthesis?: Synthesis
+  hypothesis?: Hypothesis
+  enrichmentSummary?: string
+  initialOpen?: AnyKey[]
+}
 
-  function toggle(key: ClaimKey) {
+function InvestigationAccordion({
+  synthesis,
+  hypothesis,
+  enrichmentSummary,
+  initialOpen,
+}: InvestigationAccordionProps) {
+  const [open, setOpen] = useState<Set<AnyKey>>(
+    new Set(initialOpen ?? (synthesis ? ['brand_impersonated'] : ['hypothesis'])),
+  )
+
+  function toggle(key: AnyKey) {
     setOpen((prev) => {
       const next = new Set(prev)
       next.has(key) ? next.delete(key) : next.add(key)
@@ -162,175 +227,149 @@ function ClaimsAccordion({ synthesis }: { synthesis: Synthesis }) {
     })
   }
 
+  const hasSupporting = Boolean(hypothesis || enrichmentSummary)
+
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      {CLAIM_ORDER.map(({ key, label }, i) => {
-        const claim = synthesis[key]
-        const isOpen = open.has(key)
-        const isLast = i === CLAIM_ORDER.length - 1
+      {/* Primary claims */}
+      {synthesis &&
+        CLAIM_ORDER.map(({ key, label }, i) => {
+          const claim = synthesis[key]
+          const isOpen = open.has(key)
+          const isLast = i === CLAIM_ORDER.length - 1
 
-        return (
-          <div key={key} className={cn(!isLast && 'border-b border-border')}>
-            <button
-              type="button"
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors duration-100"
-              onClick={() => toggle(key)}
-              aria-expanded={isOpen}
-            >
-              <span className="w-[152px] shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                {label}
+          return (
+            <div key={key} className={cn((!isLast || hasSupporting) && 'border-b border-border')}>
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors duration-100"
+                onClick={() => toggle(key)}
+                aria-expanded={isOpen}
+              >
+                <span className="w-[152px] shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </span>
+                <span className="flex-1 min-w-0 text-sm font-semibold text-foreground truncate">
+                  {claim.value}
+                </span>
+                <ConfidencePill confidence={claim.confidence} />
+                <ChevronDown
+                  className={cn(
+                    'w-3.5 h-3.5 shrink-0 ml-1 text-muted-foreground transition-transform duration-150',
+                    isOpen && 'rotate-180',
+                  )}
+                />
+              </button>
+              {isOpen && (
+                <div className="px-4 pt-3 pb-4 border-t border-border bg-muted/20">
+                  {evidenceItems(claim.evidence).length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      {evidenceItems(claim.evidence).map((point, j) => (
+                        <p key={j} className="text-sm leading-relaxed text-muted-foreground max-w-[95ch]">
+                          {point}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No evidence recorded.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+      {/* Supporting context: hypothesis + enrichment */}
+      {hasSupporting && (
+        <>
+          {synthesis && (
+            <div className="px-4 py-2 bg-muted/30 border-b border-border">
+              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
+                Supporting context
               </span>
-              <span className="flex-1 min-w-0 text-sm font-semibold text-foreground truncate">
-                {claim.value}
-              </span>
-              <ConfidencePill confidence={claim.confidence} />
-              <ChevronDown
-                className={cn(
-                  'w-3.5 h-3.5 shrink-0 ml-1 text-muted-foreground transition-transform duration-150',
-                  isOpen && 'rotate-180',
-                )}
-              />
-            </button>
-            {isOpen && (
-              <div className="px-4 pt-3 pb-4 border-t border-border bg-muted/20">
-                {evidenceItems(claim.evidence).length > 0 ? (
-                  <ul className="flex flex-col gap-1">
-                    {evidenceItems(claim.evidence).map((point, i) => (
-                      <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
-                        <span className="shrink-0 select-none mt-px">·</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No evidence recorded.</p>
+            </div>
+          )}
+
+          {hypothesis && (() => {
+            const isOpen = open.has('hypothesis')
+            const teaser = [hypothesis.brand, hypothesis.targeted_action].filter(Boolean).join(' · ')
+            return (
+              <div className={cn(enrichmentSummary && 'border-b border-border')}>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors duration-100"
+                  onClick={() => toggle('hypothesis')}
+                  aria-expanded={isOpen}
+                >
+                  <span className="w-[152px] shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Hypothesis
+                  </span>
+                  <span className="flex-1 min-w-0 text-sm text-foreground/70 truncate">
+                    {teaser || 'No hypothesis recorded'}
+                  </span>
+                  <ConfidencePill confidence={safeConfidence(hypothesis.confidence)} />
+                  <ChevronDown
+                    className={cn(
+                      'w-3.5 h-3.5 shrink-0 ml-1 text-muted-foreground transition-transform duration-150',
+                      isOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-4 pt-3 pb-4 border-t border-border bg-muted/20">
+                    <div className="grid gap-x-8 gap-y-2.5" style={{ gridTemplateColumns: 'auto 1fr' }}>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">Brand</span>
+                      <span className="text-sm font-medium text-foreground">{hypothesis.brand || 'Unknown'}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">Action</span>
+                      <span className="font-mono text-xs text-foreground">{hypothesis.targeted_action || 'Unknown'}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">Confidence</span>
+                      <div className="flex"><ConfidencePill confidence={safeConfidence(hypothesis.confidence)} /></div>
+                    </div>
+                    {hypothesis.reasoning && (
+                      <div className="flex flex-col gap-1.5 pt-3 mt-3 border-t border-border">
+                        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Reasoning</span>
+                        <p className="text-sm text-muted-foreground leading-relaxed max-w-[95ch]">{hypothesis.reasoning}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+            )
+          })()}
 
-// ---- Collapse widget ----
-// Generic expandable section. Teaser text shows in the header when collapsed
-// so the analyst can decide whether to open without expanding.
-
-interface CollapseWidgetProps {
-  label: string
-  teaser?: string
-  defaultOpen?: boolean
-  children: React.ReactNode
-}
-
-function CollapseWidget({ label, teaser, defaultOpen = false, children }: CollapseWidgetProps) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <button
-        type="button"
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors duration-100"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
-        <div className="flex items-baseline gap-3 min-w-0">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
-            {label}
-          </span>
-          {teaser && !open && (
-            <span className="text-xs text-muted-foreground truncate">{teaser}</span>
-          )}
-        </div>
-        <ChevronDown
-          className={cn('w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform duration-150', open && 'rotate-180')}
-        />
-      </button>
-      {open && <div className="border-t border-border">{children}</div>}
-    </div>
-  )
-}
-
-// ---- Hypothesis widget ----
-
-function HypothesisWidget({ hypothesis, defaultOpen }: { hypothesis: Hypothesis; defaultOpen?: boolean }) {
-  const teaser = [hypothesis.brand, hypothesis.targeted_action, hypothesis.confidence]
-    .filter(Boolean)
-    .join(' · ')
-
-  return (
-    <CollapseWidget label="Initial Hypothesis" teaser={teaser} defaultOpen={defaultOpen}>
-      <div className="px-4 pt-4 pb-5 flex flex-col gap-4">
-        <div className="grid gap-x-8 gap-y-2.5" style={{ gridTemplateColumns: 'auto 1fr' }}>
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">
-            Brand
-          </span>
-          <span className="text-sm font-medium text-foreground">
-            {hypothesis.brand || 'Unknown'}
-          </span>
-
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">
-            Action
-          </span>
-          <span className="font-mono text-xs text-foreground">
-            {hypothesis.targeted_action || 'Unknown'}
-          </span>
-
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground self-center">
-            Confidence
-          </span>
-          <ConfidencePill confidence={safeConfidence(hypothesis.confidence)} />
-        </div>
-
-        {hypothesis.reasoning && (
-          <div className="flex flex-col gap-1.5 pt-1 border-t border-border">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Reasoning
-            </span>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-[65ch]">
-              {hypothesis.reasoning}
-            </p>
-          </div>
-        )}
-      </div>
-    </CollapseWidget>
-  )
-}
-
-// ---- Enrichment widget ----
-
-function EnrichmentWidget({ summary }: { summary: string }) {
-  const teaser = summary.length > 72 ? summary.slice(0, 72) + '…' : summary
-
-  return (
-    <CollapseWidget label="Enrichment Notes" teaser={teaser}>
-      <div className="px-4 pt-4 pb-5">
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-[65ch] whitespace-pre-wrap">
-          {summary}
-        </p>
-      </div>
-    </CollapseWidget>
-  )
-}
-
-// ---- Screenshot widget ----
-
-function ScreenshotPanel({ id }: { id: string }) {
-  const [failed, setFailed] = useState(false)
-
-  return (
-    <div className="p-4 bg-muted/20">
-      {failed ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Screenshot unavailable</p>
-      ) : (
-        <img
-          src={`/api/v1/investigations/${id}/screenshot`}
-          alt="Page screenshot"
-          className="w-full rounded object-contain max-h-[36rem]"
-          onError={() => setFailed(true)}
-        />
+          {enrichmentSummary && (() => {
+            const isOpen = open.has('enrichment')
+            const teaser = enrichmentSummary.length > 80 ? enrichmentSummary.slice(0, 80) + '…' : enrichmentSummary
+            return (
+              <div>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors duration-100"
+                  onClick={() => toggle('enrichment')}
+                  aria-expanded={isOpen}
+                >
+                  <span className="w-[152px] shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Enrichment
+                  </span>
+                  <span className="flex-1 min-w-0 text-sm text-foreground/70 truncate">{teaser}</span>
+                  <ChevronDown
+                    className={cn(
+                      'w-3.5 h-3.5 shrink-0 ml-1 text-muted-foreground transition-transform duration-150',
+                      isOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-4 pt-3 pb-4 border-t border-border bg-muted/20">
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-[95ch] whitespace-pre-wrap">
+                      {enrichmentSummary}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </>
       )}
     </div>
   )
@@ -362,6 +401,7 @@ export function ReportView({ id }: { id: string }) {
   }
 
   const hasSynthesis = Boolean(inv.synthesis)
+  const hasDetail = hasSynthesis || Boolean(inv.hypothesis) || Boolean(inv.enrichment_summary)
 
   return (
     <div className="flex flex-col gap-6">
@@ -380,31 +420,25 @@ export function ReportView({ id }: { id: string }) {
         <VerdictHero claim={inv.synthesis.verdict} />
       ) : null}
 
-      {/* Claims accordion — executive summary with drill-down */}
-      {inv.synthesis && <ClaimsAccordion synthesis={inv.synthesis} />}
+      {/* Screenshot — contextual anchor between verdict and findings */}
+      <ScreenshotRow id={id} />
 
-      {/* No synthesis yet: pending state */}
-      {!hasSynthesis && !inv.hypothesis && inv.status !== 'failed' && (
+      {/* Unified findings accordion */}
+      {hasDetail && (
+        <InvestigationAccordion
+          synthesis={inv.synthesis}
+          hypothesis={inv.hypothesis}
+          enrichmentSummary={inv.enrichment_summary}
+          initialOpen={hasSynthesis ? ['brand_impersonated'] : ['hypothesis']}
+        />
+      )}
+
+      {/* Pending: nothing to show yet */}
+      {!hasDetail && inv.status !== 'failed' && (
         <div className="rounded-lg border border-border p-4">
           <p className="text-sm text-muted-foreground">Waiting for synthesis…</p>
         </div>
       )}
-
-      {/* Collapsible detail widgets */}
-      <div className="flex flex-col gap-3">
-        {inv.hypothesis && (
-          <HypothesisWidget
-            hypothesis={inv.hypothesis}
-            defaultOpen={!hasSynthesis}
-          />
-        )}
-        {inv.enrichment_summary && (
-          <EnrichmentWidget summary={inv.enrichment_summary} />
-        )}
-        <CollapseWidget label="Page Screenshot">
-          <ScreenshotPanel id={id} />
-        </CollapseWidget>
-      </div>
     </div>
   )
 }

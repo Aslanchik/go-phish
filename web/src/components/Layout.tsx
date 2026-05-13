@@ -138,7 +138,7 @@ export function Layout() {
               className="w-[78px] h-full shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-100"
               aria-label="go-phish home"
             >
-              <img src="/logo.png" alt="go-phish" className="w-[64px] h-[66px] scale-110 select-none" draggable={false} />
+              <img src="/logo.png" alt="go-phish" className="w-16 h-auto select-none" draggable={false} />
             </Link>
             <button
               onClick={() => setPinned((p) => !p)}

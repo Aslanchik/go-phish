@@ -168,13 +168,13 @@ func Run(
 
 	var synthResult synthesis.Result
 	if skipLLM {
-		skipped := synthesis.Claim{Confidence: "low", Evidence: "LLM call skipped; no analysis performed"}
+		skipped := synthesis.Claim{Confidence: "low", Evidence: []string{"LLM call skipped; no analysis performed"}}
 		synthResult = synthesis.Result{
 			BrandImpersonated:   skipped,
 			KitIdentification:   skipped,
 			ExfilTarget:         skipped,
 			InfrastructureNotes: skipped,
-			Verdict:             synthesis.Claim{Value: "inconclusive", Confidence: "low", Evidence: "LLM call skipped; no analysis performed"},
+			Verdict:             synthesis.Claim{Value: "inconclusive", Confidence: "low", Evidence: []string{"LLM call skipped; no analysis performed"}},
 		}
 	} else {
 		synthResult, err = synthesis.Generate(ctx, llmClient, inv)

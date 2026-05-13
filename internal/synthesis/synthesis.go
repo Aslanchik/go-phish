@@ -21,9 +21,9 @@ var ErrNoHypothesis = errors.New("synthesis requires a prior hypothesis; inv.Hyp
 
 // Claim is a single finding with an evidence-backed confidence rating.
 type Claim struct {
-	Value      string `json:"value"`
-	Confidence string `json:"confidence"`
-	Evidence   string `json:"evidence"`
+	Value      string   `json:"value"`
+	Confidence string   `json:"confidence"`
+	Evidence   []string `json:"evidence"`
 }
 
 // Result holds the five structured findings produced by Phase 4.
@@ -116,13 +116,18 @@ func artifactBlock(finalURL sql.NullString, formsRaw, jsFilesRaw json.RawMessage
 }
 
 func recordSynthesisSchema() anthropic.ToolInputSchemaParam {
+	evidenceSchema := map[string]any{
+		"type":     "array",
+		"items":    map[string]any{"type": "string"},
+		"minItems": 1,
+	}
 	claim := map[string]any{
 		"type":     "object",
 		"required": []string{"value", "confidence", "evidence"},
 		"properties": map[string]any{
 			"value":      map[string]any{"type": "string"},
 			"confidence": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}},
-			"evidence":   map[string]any{"type": "string", "minLength": 1},
+			"evidence":   evidenceSchema,
 		},
 	}
 	verdictClaim := map[string]any{
@@ -131,7 +136,7 @@ func recordSynthesisSchema() anthropic.ToolInputSchemaParam {
 		"properties": map[string]any{
 			"value":      map[string]any{"type": "string", "enum": []string{"phishing", "benign", "inconclusive"}},
 			"confidence": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}},
-			"evidence":   map[string]any{"type": "string", "minLength": 1},
+			"evidence":   evidenceSchema,
 		},
 	}
 	return anthropic.ToolInputSchemaParam{
@@ -160,5 +165,7 @@ const systemPrompt = `You are a phishing analyst completing a final synthesis of
 You will receive three blocks of evidence: the Phase 2 hypothesis (initial visual assessment), the Phase 3 enrichment trace (tool call results), and a summary of page artifacts.
 
 Your task is to synthesise all evidence into a structured verdict. Every claim MUST be backed by specific evidence — cite the tool or artifact that supports each claim. Do not invent evidence.
+
+The "evidence" field for each claim must be an array of short, discrete bullet points (one finding per item). Each item should cite the specific tool or artifact. Example: ["whois_lookup: domain registered 2026-05-01", "urlhaus_check: no matches found"].
 
 You MUST call the record_synthesis tool with your findings. Do not write a text response.`

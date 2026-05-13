@@ -26,8 +26,8 @@ export function InvestigationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10 flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Investigation Report</h1>
+    <div className="mx-auto max-w-5xl px-8 py-10 flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold tracking-tight">Investigation Report</h1>
 
       {terminal === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

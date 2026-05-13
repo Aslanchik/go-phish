@@ -3,6 +3,11 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Claim, Hypothesis, InvestigationDetail, Synthesis } from '@/types'
 
+function evidenceItems(evidence: string[] | string | null | undefined): string[] {
+  if (!evidence) return []
+  return Array.isArray(evidence) ? evidence : [evidence]
+}
+
 // ---- Verdict signal detection ----
 
 type VerdictSignal = 'threat-high' | 'threat-medium' | 'threat-low' | 'clean' | 'uncertain'
@@ -30,80 +35,38 @@ function verdictSignal(claim: Claim): VerdictSignal {
 }
 
 // ---- Hero color tokens ----
-// Border + light tint only. Text is always ink-deep — no contrast compromise.
+// Border only — background is always transparent.
 
-type HeroStyle = { bg: string; fg: string; border: string; pillBg: string; pillFg: string }
-
-const HERO_STYLES: Record<VerdictSignal, HeroStyle> = {
-  'threat-high': {
-    bg: 'oklch(0.577 0.245 27 / 0.055)',
-    fg: 'oklch(0.145 0 0)',
-    border: '1.5px solid oklch(0.577 0.245 27)',
-    pillBg: 'oklch(0.577 0.245 27 / 0.12)',
-    pillFg: 'oklch(0.47 0.22 27)',
-  },
-  'threat-medium': {
-    bg: 'oklch(0.769 0.188 70 / 0.07)',
-    fg: 'oklch(0.145 0 0)',
-    border: '1.5px solid oklch(0.65 0.18 70)',
-    pillBg: 'oklch(0.65 0.18 70 / 0.18)',
-    pillFg: 'oklch(0.48 0.15 70)',
-  },
-  'threat-low': {
-    bg: 'oklch(0.577 0.245 27 / 0.04)',
-    fg: 'oklch(0.145 0 0)',
-    border: '1px solid oklch(0.577 0.245 27 / 0.4)',
-    pillBg: 'oklch(0.577 0.245 27 / 0.1)',
-    pillFg: 'oklch(0.577 0.245 27)',
-  },
-  clean: {
-    bg: 'oklch(0.627 0.194 149 / 0.06)',
-    fg: 'oklch(0.145 0 0)',
-    border: '1.5px solid oklch(0.627 0.194 149)',
-    pillBg: 'oklch(0.627 0.194 149 / 0.15)',
-    pillFg: 'oklch(0.40 0.16 149)',
-  },
-  uncertain: {
-    bg: 'oklch(0.97 0 0)',
-    fg: 'oklch(0.145 0 0)',
-    border: '1px solid oklch(0.922 0 0)',
-    pillBg: 'oklch(0.145 0 0 / 0.07)',
-    pillFg: 'oklch(0.556 0 0)',
-  },
-}
-
-function heroConfidenceLabel(c: Claim['confidence']): string {
-  return c === 'medium' ? 'med' : c
+const HERO_BORDER: Record<VerdictSignal, string> = {
+  'threat-high':   '1.5px solid oklch(0.577 0.245 27)',
+  'threat-medium': '1.5px solid oklch(0.65 0.18 70)',
+  'threat-low':    '1px solid oklch(0.577 0.245 27 / 0.4)',
+  clean:           '1.5px solid oklch(0.627 0.194 149)',
+  uncertain:       '1px solid oklch(0.922 0 0)',
 }
 
 // ---- Verdict hero ----
 
 function VerdictHero({ claim }: { claim: Claim }) {
   const signal = verdictSignal(claim)
-  const s = HERO_STYLES[signal]
 
   return (
     <div
       className="rounded-lg px-6 py-5 flex flex-col gap-3"
-      style={{ backgroundColor: s.bg, border: s.border }}
+      style={{ border: HERO_BORDER[signal] }}
     >
       <div className="flex items-start justify-between gap-6">
         <p
-          className="text-[1.125rem] font-semibold leading-snug"
-          style={{ color: s.fg, maxWidth: '55ch', textWrap: 'balance' } as React.CSSProperties}
+          className="text-[1.125rem] font-semibold leading-snug uppercase tracking-wide"
+          style={{ maxWidth: '55ch', textWrap: 'balance' } as React.CSSProperties}
         >
           {claim.value}
         </p>
-        <span
-          className="shrink-0 text-[10px] font-medium tracking-widest uppercase rounded-full px-2.5 py-1 leading-none mt-0.5"
-          style={{ backgroundColor: s.pillBg, color: s.pillFg }}
-        >
-          {heroConfidenceLabel(claim.confidence)}
-        </span>
+        <ConfidencePill confidence={claim.confidence} />
       </div>
-      {claim.evidence?.length > 0 && (
+      {evidenceItems(claim.evidence).length > 0 && (
         <ul className="flex flex-col gap-1 mt-0.5">
-          {claim.evidence.map((point, i) => (
+          {evidenceItems(claim.evidence).map((point, i) => (
             <li key={i} className="flex gap-2 text-[0.8125rem] leading-relaxed text-muted-foreground">
               <span className="shrink-0 select-none mt-px">·</span>
               <span>{point}</span>
@@ -119,10 +82,7 @@ function FailedHero({ error }: { error?: string }) {
   return (
     <div
       className="rounded-lg px-6 py-5 flex flex-col gap-2"
-      style={{
-        backgroundColor: 'oklch(0.577 0.245 27 / 0.055)',
-        border: '1.5px solid oklch(0.577 0.245 27)',
-      }}
+      style={{ border: '1.5px solid oklch(0.577 0.245 27)' }}
     >
       <div className="flex items-start justify-between gap-6">
         <p className="text-[1.125rem] font-semibold text-foreground">
@@ -147,7 +107,10 @@ function FailedHero({ error }: { error?: string }) {
 function ConfidencePill({ confidence }: { confidence: Claim['confidence'] }) {
   if (confidence === 'high') {
     return (
-      <span className="text-[10px] font-medium tracking-widest uppercase rounded-full px-2 py-0.5 bg-primary text-primary-foreground leading-none">
+      <span
+        className="shrink-0 text-[10px] font-medium tracking-widest uppercase rounded-full px-2.5 py-1 leading-none"
+        style={{ backgroundColor: 'oklch(0.627 0.194 149 / 0.15)', color: 'oklch(0.40 0.16 149)' }}
+      >
         High
       </span>
     )
@@ -155,7 +118,7 @@ function ConfidencePill({ confidence }: { confidence: Claim['confidence'] }) {
   if (confidence === 'medium') {
     return (
       <span
-        className="text-[10px] font-medium tracking-widest uppercase rounded-full px-2 py-0.5 leading-none"
+        className="shrink-0 text-[10px] font-medium tracking-widest uppercase rounded-full px-2.5 py-1 leading-none"
         style={{ backgroundColor: 'oklch(0.769 0.188 70 / 0.18)', color: 'oklch(0.46 0.14 70)' }}
       >
         Med
@@ -164,8 +127,8 @@ function ConfidencePill({ confidence }: { confidence: Claim['confidence'] }) {
   }
   return (
     <span
-      className="text-[10px] font-medium tracking-widest uppercase rounded-full px-2 py-0.5 leading-none"
-      style={{ backgroundColor: 'oklch(0.577 0.245 27 / 0.1)', color: 'oklch(0.577 0.245 27)' }}
+      className="shrink-0 text-[10px] font-medium tracking-widest uppercase rounded-full px-2.5 py-1 leading-none"
+      style={{ backgroundColor: 'oklch(0.145 0 0 / 0.07)', color: 'oklch(0.556 0 0)' }}
     >
       Low
     </span>
@@ -230,9 +193,9 @@ function ClaimsAccordion({ synthesis }: { synthesis: Synthesis }) {
             </button>
             {isOpen && (
               <div className="px-4 pt-3 pb-4 border-t border-border bg-muted/20">
-                {claim.evidence?.length > 0 ? (
+                {evidenceItems(claim.evidence).length > 0 ? (
                   <ul className="flex flex-col gap-1">
-                    {claim.evidence.map((point, i) => (
+                    {evidenceItems(claim.evidence).map((point, i) => (
                       <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
                         <span className="shrink-0 select-none mt-px">·</span>
                         <span>{point}</span>

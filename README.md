@@ -98,9 +98,53 @@ Open [http://localhost:8080](http://localhost:8080).
 
 ## Usage
 
+### Web UI
+
 Paste any `http://` or `https://` URL into the form and click **Investigate**. The pipeline runs in the background; tool calls and phase transitions stream live in the progress panel. When the investigation completes, the full report is shown — including per-claim confidence levels for brand identification, kit fingerprint, exfiltration target, and verdict.
 
 Past investigations are listed on the home page and can be reopened at any time.
+
+### CLI
+
+The `gophish` binary runs the full pipeline without the web server and prints the report to stdout. It still requires Postgres and Docker (the fetcher runs in a container regardless of how the pipeline is invoked).
+
+**Prerequisites:** complete the [Local development](#local-development) setup steps (Postgres running, `.env` sourced, fetcher image built).
+
+**Build**
+
+```sh
+go build -o gophish ./cmd/gophish
+```
+
+**Run**
+
+```sh
+ANTHROPIC_API_KEY=sk-ant-... DATABASE_URL=postgres://... ./gophish https://suspicious-url.example
+```
+
+Or with the env file already sourced:
+
+```sh
+source .env && ./gophish https://suspicious-url.example
+```
+
+The report is printed to stdout. The investigation is also stored in Postgres and visible in the web UI if the server is running.
+
+**Flags**
+
+| Flag | Description |
+|---|---|
+| `--skip-llm` | Skip all LLM calls and use a stub hypothesis — useful for testing the fetch stage without an API key |
+
+```sh
+./gophish --skip-llm https://suspicious-url.example
+```
+
+**Clean up**
+
+```sh
+rm gophish
+```
 
 ## Database
 

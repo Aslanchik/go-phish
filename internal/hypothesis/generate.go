@@ -2,13 +2,21 @@ package hypothesis
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/packages/param"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/aslanchik/go-phish/internal/telemetry"
 )
 
 const (
@@ -30,6 +38,19 @@ func Generate(ctx context.Context, client *anthropic.Client, screenshotPNG []byt
 
 	b64 := base64.StdEncoding.EncodeToString(screenshotPNG)
 
+	spanName := "chat " + string(model)
+	ctx, span := otel.Tracer(telemetry.TracerName).Start(ctx, spanName,
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrGenAIOperationName, "chat"),
+			attribute.String(telemetry.AttrGenAIProviderName, "anthropic"),
+			attribute.String(telemetry.AttrGenAIRequestModel, string(model)),
+			attribute.Int(telemetry.AttrGenAIRequestMaxTokens, maxTokens),
+			attribute.String(telemetry.AttrScreenshotContentType, "image/png"),
+			attribute.Int64(telemetry.AttrScreenshotSizeBytes, int64(len(screenshotPNG))),
+			attribute.String(telemetry.AttrScreenshotSHA256, screenshotSHA256(screenshotPNG)),
+		))
+	defer span.End()
+
 	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     model,
 		MaxTokens: maxTokens,
@@ -48,8 +69,12 @@ func Generate(ctx context.Context, client *anthropic.Client, screenshotPNG []byt
 		ToolChoice: anthropic.ToolChoiceParamOfTool("record_hypothesis"),
 	})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return Hypothesis{}, fmt.Errorf("anthropic API: %w", err)
 	}
+
+	setLLMResponseAttrs(span, resp)
 
 	for _, block := range resp.Content {
 		tu := block.AsToolUse()
@@ -63,6 +88,26 @@ func Generate(ctx context.Context, client *anthropic.Client, screenshotPNG []byt
 		return h, nil
 	}
 	return Hypothesis{}, ErrNoToolCall
+}
+
+func screenshotSHA256(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+func setLLMResponseAttrs(span trace.Span, resp *anthropic.Message) {
+	span.SetAttributes(
+		attribute.String(telemetry.AttrGenAIResponseModel, string(resp.Model)),
+		attribute.String(telemetry.AttrGenAIResponseID, resp.ID),
+		attribute.Int64(telemetry.AttrGenAIUsageInputTokens,
+			resp.Usage.InputTokens+resp.Usage.CacheReadInputTokens+resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageOutputTokens, resp.Usage.OutputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheCreationInputTokens, resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheReadInputTokens, resp.Usage.CacheReadInputTokens),
+	)
+	if resp.StopReason != "" {
+		span.SetAttributes(attribute.StringSlice(telemetry.AttrGenAIResponseFinishReasons, []string{string(resp.StopReason)}))
+	}
 }
 
 func recordHypothesisSchema() anthropic.ToolInputSchemaParam {

@@ -13,13 +13,18 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/packages/param"
 	mcpclient "github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/aslanchik/go-phish/internal/db"
+	"github.com/aslanchik/go-phish/internal/telemetry"
 )
 
 const (
-	model          = anthropic.ModelClaudeSonnet4_6
-	maxTokens      = 4096
+	model           = anthropic.ModelClaudeSonnet4_6
+	maxTokens       = 4096
 	defaultMaxTurns = 10
 )
 
@@ -64,15 +69,30 @@ func Run(
 
 	for turn := 0; turn < maxTurns; turn++ {
 		log.Printf("enrichment: turn %d/%d", turn+1, maxTurns)
-		resp, err := anthropicClient.Messages.New(ctx, anthropic.MessageNewParams{
+
+		spanName := "chat " + string(model)
+		llmCtx, llmSpan := otel.Tracer(telemetry.TracerName).Start(ctx, spanName,
+			oteltrace.WithAttributes(
+				attribute.String(telemetry.AttrGenAIOperationName, "chat"),
+				attribute.String(telemetry.AttrGenAIProviderName, "anthropic"),
+				attribute.String(telemetry.AttrGenAIRequestModel, string(model)),
+				attribute.Int(telemetry.AttrGenAIRequestMaxTokens, maxTokens),
+			))
+
+		resp, err := anthropicClient.Messages.New(llmCtx, anthropic.MessageNewParams{
 			Model:     model,
 			MaxTokens: maxTokens,
 			Messages:  messages,
 			Tools:     tools,
 		})
 		if err != nil {
+			llmSpan.RecordError(err)
+			llmSpan.SetStatus(codes.Error, err.Error())
+			llmSpan.End()
 			return trace, summary, fmt.Errorf("anthropic API (turn %d): %w", turn+1, err)
 		}
+		setLLMResponseAttrs(llmSpan, resp)
+		llmSpan.End()
 
 		// Append assistant turn to history.
 		messages = append(messages, resp.ToParam())
@@ -89,10 +109,25 @@ func Run(
 			if toolCB != nil {
 				toolCB(tu.Name, json.RawMessage(tu.Input), nil)
 			}
-			output, callErr := dispatchTool(ctx, mcpClient, tu.Name, tu.Input)
+
+			toolCtx, toolSpan := otel.Tracer(telemetry.TracerName).Start(ctx, "execute_tool "+tu.Name,
+				oteltrace.WithAttributes(
+					attribute.String(telemetry.AttrGenAIToolName, tu.Name),
+				))
+			if tu.ID != "" {
+				toolSpan.SetAttributes(attribute.String(telemetry.AttrGenAIToolCallID, tu.ID))
+			}
+			inputV, inputTrunc := telemetry.Truncate(string(tu.Input))
+			toolSpan.SetAttributes(attribute.String(telemetry.AttrToolInput, inputV))
+			if inputTrunc {
+				toolSpan.SetAttributes(attribute.Bool(telemetry.AttrToolInput+".truncated", true))
+			}
+
+			output, callErr := dispatchTool(toolCtx, mcpClient, tu.Name, tu.Input)
 			if toolCB != nil {
 				toolCB(tu.Name, json.RawMessage(tu.Input), output)
 			}
+
 			tc := ToolCall{
 				Tool:     tu.Name,
 				Input:    json.RawMessage(tu.Input),
@@ -102,7 +137,17 @@ func Run(
 			if callErr != nil {
 				errJSON, _ := json.Marshal(map[string]string{"error": callErr.Error()})
 				tc.Output = errJSON
+				toolSpan.RecordError(callErr)
+				toolSpan.SetStatus(codes.Error, callErr.Error())
+			} else {
+				outputV, outputTrunc := telemetry.Truncate(string(output))
+				toolSpan.SetAttributes(attribute.String(telemetry.AttrToolOutput, outputV))
+				if outputTrunc {
+					toolSpan.SetAttributes(attribute.Bool(telemetry.AttrToolOutput+".truncated", true))
+				}
 			}
+			toolSpan.End()
+
 			trace = append(trace, tc)
 			toolResults = append(toolResults, anthropic.NewToolResultBlock(tu.ID, string(tc.Output), false))
 		}
@@ -126,6 +171,21 @@ func Run(
 	// Cap reached — return what we have.
 	log.Printf("enrichment: iteration cap reached (%d turns) — %d tool calls", maxTurns, len(trace))
 	return trace, summary, nil
+}
+
+func setLLMResponseAttrs(span oteltrace.Span, resp *anthropic.Message) {
+	span.SetAttributes(
+		attribute.String(telemetry.AttrGenAIResponseModel, string(resp.Model)),
+		attribute.String(telemetry.AttrGenAIResponseID, resp.ID),
+		attribute.Int64(telemetry.AttrGenAIUsageInputTokens,
+			resp.Usage.InputTokens+resp.Usage.CacheReadInputTokens+resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageOutputTokens, resp.Usage.OutputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheCreationInputTokens, resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheReadInputTokens, resp.Usage.CacheReadInputTokens),
+	)
+	if resp.StopReason != "" {
+		span.SetAttributes(attribute.StringSlice(telemetry.AttrGenAIResponseFinishReasons, []string{string(resp.StopReason)}))
+	}
 }
 
 // truncate shortens s to at most n bytes, appending "…" if cut.

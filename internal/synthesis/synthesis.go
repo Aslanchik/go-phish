@@ -9,8 +9,18 @@ import (
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/packages/param"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/aslanchik/go-phish/internal/db"
+	"github.com/aslanchik/go-phish/internal/telemetry"
+)
+
+const (
+	model     = anthropic.ModelClaudeSonnet4_6
+	maxTokens = 2048
 )
 
 // ErrNoToolCall is returned when the model responds without calling record_synthesis.
@@ -42,9 +52,19 @@ func Generate(ctx context.Context, client *anthropic.Client, inv db.Investigatio
 		return Result{}, ErrNoHypothesis
 	}
 
+	spanName := "chat " + string(model)
+	ctx, span := otel.Tracer(telemetry.TracerName).Start(ctx, spanName,
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrGenAIOperationName, "chat"),
+			attribute.String(telemetry.AttrGenAIProviderName, "anthropic"),
+			attribute.String(telemetry.AttrGenAIRequestModel, string(model)),
+			attribute.Int(telemetry.AttrGenAIRequestMaxTokens, maxTokens),
+		))
+	defer span.End()
+
 	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.ModelClaudeSonnet4_6,
-		MaxTokens: 2048,
+		Model:     model,
+		MaxTokens: maxTokens,
 		System: []anthropic.TextBlockParam{
 			{Text: systemPrompt},
 		},
@@ -61,10 +81,28 @@ func Generate(ctx context.Context, client *anthropic.Client, inv db.Investigatio
 		ToolChoice: anthropic.ToolChoiceParamOfTool("record_synthesis"),
 	})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return Result{}, fmt.Errorf("anthropic API: %w", err)
 	}
 
+	setLLMResponseAttrs(span, resp)
 	return parseBlocks(resp.Content)
+}
+
+func setLLMResponseAttrs(span trace.Span, resp *anthropic.Message) {
+	span.SetAttributes(
+		attribute.String(telemetry.AttrGenAIResponseModel, string(resp.Model)),
+		attribute.String(telemetry.AttrGenAIResponseID, resp.ID),
+		attribute.Int64(telemetry.AttrGenAIUsageInputTokens,
+			resp.Usage.InputTokens+resp.Usage.CacheReadInputTokens+resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageOutputTokens, resp.Usage.OutputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheCreationInputTokens, resp.Usage.CacheCreationInputTokens),
+		attribute.Int64(telemetry.AttrGenAIUsageCacheReadInputTokens, resp.Usage.CacheReadInputTokens),
+	)
+	if resp.StopReason != "" {
+		span.SetAttributes(attribute.StringSlice(telemetry.AttrGenAIResponseFinishReasons, []string{string(resp.StopReason)}))
+	}
 }
 
 func parseBlocks(blocks []anthropic.ContentBlockUnion) (Result, error) {

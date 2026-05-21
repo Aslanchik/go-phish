@@ -10,6 +10,10 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/aslanchik/go-phish/internal/agent"
 	"github.com/aslanchik/go-phish/internal/db"
@@ -17,6 +21,7 @@ import (
 	"github.com/aslanchik/go-phish/internal/hypothesis"
 	"github.com/aslanchik/go-phish/internal/report"
 	"github.com/aslanchik/go-phish/internal/synthesis"
+	"github.com/aslanchik/go-phish/internal/telemetry"
 	"github.com/aslanchik/go-phish/internal/tools"
 )
 
@@ -70,10 +75,20 @@ func Run(
 	}
 
 	log.Printf("phase 1: fetching %s", inv.URL)
-	result, err := fetcher.Run(ctx, inv.URL)
+	fetchCtx, fetchSpan := otel.Tracer(telemetry.TracerName).Start(ctx, "ssspy.phase.fetch",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrPhase, "fetch"),
+			attribute.Int(telemetry.AttrPhaseIndex, 1),
+		))
+	result, err := fetcher.Run(fetchCtx, inv.URL)
 	if err != nil {
+		fetchSpan.RecordError(err)
+		fetchSpan.SetStatus(codes.Error, err.Error())
+		fetchSpan.End()
 		return fail("fetch: %w", err)
 	}
+	fetchSpan.End()
+
 	if err := db.UpdateArtifacts(ctx, conn, invID, result); err != nil {
 		return fail("store artifacts: %w", err)
 	}
@@ -85,6 +100,11 @@ func Run(
 	emit("phase_transition", map[string]any{"phase": "hypothesizing"})
 
 	log.Printf("phase 2: generating hypothesis")
+	hypCtx, hypSpan := otel.Tracer(telemetry.TracerName).Start(ctx, "ssspy.phase.hypothesis",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrPhase, "hypothesis"),
+			attribute.Int(telemetry.AttrPhaseIndex, 2),
+		))
 	var hyp hypothesis.Hypothesis
 	if skipLLM {
 		hyp = hypothesis.Hypothesis{
@@ -94,15 +114,31 @@ func Run(
 			Reasoning:      "LLM call skipped; no analysis performed.",
 		}
 	} else {
-		screenshotBytes, err := base64.StdEncoding.DecodeString(result.Screenshot)
-		if err != nil {
-			return fail("decode screenshot: %w", err)
+		screenshotBytes, decErr := base64.StdEncoding.DecodeString(result.Screenshot)
+		if decErr != nil {
+			hypSpan.RecordError(decErr)
+			hypSpan.SetStatus(codes.Error, decErr.Error())
+			hypSpan.End()
+			return fail("decode screenshot: %w", decErr)
 		}
-		hyp, err = hypothesis.Generate(ctx, llmClient, screenshotBytes, result.RenderedDOM)
-		if err != nil {
-			return fail("hypothesis: %w", err)
+		var hypErr error
+		hyp, hypErr = hypothesis.Generate(hypCtx, llmClient, screenshotBytes, result.RenderedDOM)
+		if hypErr != nil {
+			hypSpan.RecordError(hypErr)
+			hypSpan.SetStatus(codes.Error, hypErr.Error())
+			hypSpan.End()
+			return fail("hypothesis: %w", hypErr)
 		}
 	}
+	if hypJSON, merr := json.Marshal(hyp); merr == nil {
+		v, trunc := telemetry.Truncate(string(hypJSON))
+		hypSpan.SetAttributes(attribute.String(telemetry.AttrPhaseOutcome, v))
+		if trunc {
+			hypSpan.SetAttributes(attribute.Bool(telemetry.AttrPhaseOutcome+".truncated", true))
+		}
+	}
+	hypSpan.End()
+
 	if err := db.UpdateHypothesis(ctx, conn, invID, hyp); err != nil {
 		return fail("store hypothesis: %w", err)
 	}
@@ -118,12 +154,21 @@ func Run(
 		return fail("read investigation before enrichment: %w", err)
 	}
 
+	enrichCtx, enrichSpan := otel.Tracer(telemetry.TracerName).Start(ctx, "ssspy.phase.enrichment",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrPhase, "enrichment"),
+			attribute.Int(telemetry.AttrPhaseIndex, 3),
+		))
+
 	if !skipLLM {
 		log.Printf("phase 3: starting enrichment agent loop")
 
-		toolServer, err := tools.New(ctx, llmClient)
-		if err != nil {
-			return fail("start tool server: %w", err)
+		toolServer, toolErr := tools.New(ctx, llmClient)
+		if toolErr != nil {
+			enrichSpan.RecordError(toolErr)
+			enrichSpan.SetStatus(codes.Error, toolErr.Error())
+			enrichSpan.End()
+			return fail("start tool server: %w", toolErr)
 		}
 		defer toolServer.Stop()
 
@@ -139,20 +184,30 @@ func Run(
 			}
 		}
 
-		enrichTrace, enrichSummary, err := agent.Run(ctx, inv, llmClient, toolServer.Client, toolCB)
-		if err != nil {
-			return fail("enrichment: %w", err)
+		enrichTrace, enrichSummary, enrichErr := agent.Run(enrichCtx, inv, llmClient, toolServer.Client, toolCB)
+		if enrichErr != nil {
+			enrichSpan.RecordError(enrichErr)
+			enrichSpan.SetStatus(codes.Error, enrichErr.Error())
+			enrichSpan.End()
+			return fail("enrichment: %w", enrichErr)
 		}
 		log.Printf("phase 3: complete — %d tool calls", len(enrichTrace))
 
-		traceJSON, err := json.Marshal(enrichTrace)
-		if err != nil {
-			return fail("marshal enrichment trace: %w", err)
+		traceJSON, marshalErr := json.Marshal(enrichTrace)
+		if marshalErr != nil {
+			enrichSpan.RecordError(marshalErr)
+			enrichSpan.SetStatus(codes.Error, marshalErr.Error())
+			enrichSpan.End()
+			return fail("marshal enrichment trace: %w", marshalErr)
 		}
-		if err := db.UpdateEnrichment(ctx, conn, invID, traceJSON, enrichSummary); err != nil {
-			return fail("store enrichment: %w", err)
+		if storeErr := db.UpdateEnrichment(ctx, conn, invID, traceJSON, enrichSummary); storeErr != nil {
+			enrichSpan.RecordError(storeErr)
+			enrichSpan.SetStatus(codes.Error, storeErr.Error())
+			enrichSpan.End()
+			return fail("store enrichment: %w", storeErr)
 		}
 	}
+	enrichSpan.End()
 
 	// --- Phase 4: synthesis ---
 	if err := db.UpdateStatus(ctx, conn, invID, db.StatusSynthesizing, ""); err != nil {
@@ -166,6 +221,12 @@ func Run(
 		return fail("read investigation before synthesis: %w", err)
 	}
 
+	synthCtx, synthSpan := otel.Tracer(telemetry.TracerName).Start(ctx, "ssspy.phase.synthesis",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrPhase, "synthesis"),
+			attribute.Int(telemetry.AttrPhaseIndex, 4),
+		))
+
 	var synthResult synthesis.Result
 	if skipLLM {
 		skipped := synthesis.Claim{Confidence: "low", Evidence: []string{"LLM call skipped; no analysis performed"}}
@@ -177,16 +238,31 @@ func Run(
 			Verdict:             synthesis.Claim{Value: "inconclusive", Confidence: "low", Evidence: []string{"LLM call skipped; no analysis performed"}},
 		}
 	} else {
-		synthResult, err = synthesis.Generate(ctx, llmClient, inv)
-		if err != nil {
-			return fail("synthesis: %w", err)
+		var synthErr error
+		synthResult, synthErr = synthesis.Generate(synthCtx, llmClient, inv)
+		if synthErr != nil {
+			synthSpan.RecordError(synthErr)
+			synthSpan.SetStatus(codes.Error, synthErr.Error())
+			synthSpan.End()
+			return fail("synthesis: %w", synthErr)
 		}
 	}
 
 	synthJSON, err := json.Marshal(synthResult)
 	if err != nil {
+		synthSpan.RecordError(err)
+		synthSpan.SetStatus(codes.Error, err.Error())
+		synthSpan.End()
 		return fail("marshal synthesis result: %w", err)
 	}
+	if v, trunc := telemetry.Truncate(string(synthJSON)); true {
+		synthSpan.SetAttributes(attribute.String(telemetry.AttrPhaseOutcome, v))
+		if trunc {
+			synthSpan.SetAttributes(attribute.Bool(telemetry.AttrPhaseOutcome+".truncated", true))
+		}
+	}
+	synthSpan.End()
+
 	if err := db.UpdateSynthesis(ctx, conn, invID, synthJSON); err != nil {
 		return fail("store synthesis: %w", err)
 	}

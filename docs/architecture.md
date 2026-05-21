@@ -101,6 +101,7 @@ graph LR
         agent["agent\nagent loop · MCP dispatch"]
         tools["tools\nMCP server · tool handlers"]
         synthesis["synthesis\nLLM call · per-claim verdict"]
+        telemetry["telemetry\ntracer.go — tracer init · shutdown · Version()\nattrs.go — gen_ai.* and ssspy.* attribute constants\npayload.go — Truncate() · 32 KB threshold"]
     end
 
     subgraph webpkg["web/"]
@@ -112,7 +113,9 @@ graph LR
     end
 
     cmd_cli --> pipeline
+    cmd_cli --> telemetry
     cmd_server --> api
+    cmd_server --> telemetry
     api --> pipeline
     api --> db
     api --> webembed
@@ -122,10 +125,16 @@ graph LR
     pipeline --> synthesis
     pipeline --> db
     pipeline --> report
+    pipeline --> telemetry
     agent --> tools
+    agent --> telemetry
+    hypothesis --> telemetry
+    synthesis --> telemetry
     synthesis --> db
     fetcher --> fetcherbin
 ```
+
+`internal/telemetry` owns tracer initialisation, shutdown, the `TracerName` constant, all `gen_ai.*` and `ssspy.*` attribute name constants (`attrs.go`), and the `Truncate` payload-size helper (`payload.go`). Span *creation* is distributed across the packages that own each operation — `cmd/gophish` creates the root investigation span, `internal/pipeline` creates phase spans, and `internal/hypothesis`, `internal/synthesis`, and `internal/agent` each create their own LLM call spans and (for agent) tool call spans. No span is created inside `internal/telemetry` itself.
 
 ## Status
 

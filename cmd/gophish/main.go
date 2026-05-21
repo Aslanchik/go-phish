@@ -2,16 +2,24 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
-	"flag"
+	"strings"
+	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/aslanchik/go-phish/internal/db"
 	"github.com/aslanchik/go-phish/internal/pipeline"
 	"github.com/aslanchik/go-phish/internal/report"
+	"github.com/aslanchik/go-phish/internal/telemetry"
 )
 
 func main() {
@@ -66,9 +74,41 @@ func run(ctx context.Context, rawURL string, skipLLM bool) error {
 		return fmt.Errorf("create investigation: %w", err)
 	}
 
+	shutdown, initErr := telemetry.Init(ctx)
+	if initErr != nil {
+		log.Printf("warn: telemetry init failed: %v — continuing without traces", initErr)
+	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if shutErr := shutdown(shutCtx); shutErr != nil {
+			log.Printf("warn: telemetry shutdown: %v", shutErr)
+		}
+	}()
+
+	tracer := otel.Tracer(telemetry.TracerName)
+	ctx, rootSpan := tracer.Start(ctx, "ssspy.investigation",
+		trace.WithAttributes(
+			attribute.String(telemetry.AttrInvestigationID, inv.ID),
+			attribute.String(telemetry.AttrTargetURL, normalizeURL(rawURL)),
+			attribute.String(telemetry.AttrAgentName, "go-phish"),
+			attribute.String(telemetry.AttrAgentVersion, telemetry.Version()),
+		))
+	defer func() {
+		if r := recover(); r != nil {
+			rootSpan.SetStatus(codes.Error, fmt.Sprintf("panic: %v", r))
+			rootSpan.End()
+			panic(r)
+		}
+	}()
+
 	if err := pipeline.Run(ctx, inv.ID, conn, &llmClient, skipLLM, nil); err != nil {
+		rootSpan.SetStatus(codes.Error, err.Error())
+		rootSpan.End()
 		return err
 	}
+	rootSpan.SetStatus(codes.Ok, "")
+	rootSpan.End()
 
 	inv, err = db.GetInvestigation(ctx, conn, inv.ID)
 	if err != nil {
@@ -90,4 +130,13 @@ func validateURL(raw string) error {
 		return fmt.Errorf("URL has no host")
 	}
 	return nil
+}
+
+func normalizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return strings.TrimRight(raw, "/")
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	return strings.TrimRight(u.String(), "/")
 }
